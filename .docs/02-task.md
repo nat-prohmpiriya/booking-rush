@@ -254,6 +254,21 @@
 ## Phase 6: Frontend
 **Goal:** User-facing web application
 
+### 6.0 Route Structure & URL Design
+- [ ] Define URL structure:
+  - `/` - Homepage (Event List + Search/Filter)
+  - `/?q=xxx&category=xxx` - Search results
+  - `/events/[slug]` - Event Detail + Shows
+  - `/events/[slug]/booking` - Seat Selection
+  - `/events/[slug]/payment` - Payment
+  - `/auth/login` - Login
+  - `/auth/register` - Register
+  - `/bookings` - Booking History
+  - `/bookings/[id]` - E-Ticket
+  - `/queue` - Virtual Queue
+- [ ] Add `slug` column to events table (unique, indexed)
+- [ ] Create slug generator utility
+
 ### 6.1 Setup
 - [ ] Initialize Next.js 15 project (App Router)
 - [ ] Setup TailwindCSS

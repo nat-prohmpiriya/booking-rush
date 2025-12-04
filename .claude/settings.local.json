@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(docker ps:*)",
+      "Bash(lsof:*)",
+      "Bash(docker exec:*)",
+      "Bash(test:*)",
+      "WebSearch"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
