@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -155,12 +156,12 @@ func (db *PostgresDB) Exec(ctx context.Context, sql string, args ...interface{})
 }
 
 // QueryRow executes a query that returns at most one row
-func (db *PostgresDB) QueryRow(ctx context.Context, sql string, args ...interface{}) pgxpool.Row {
+func (db *PostgresDB) QueryRow(ctx context.Context, sql string, args ...interface{}) pgx.Row {
 	return db.pool.QueryRow(ctx, sql, args...)
 }
 
 // BeginTx starts a new transaction
-func (db *PostgresDB) BeginTx(ctx context.Context) (pgxpool.Tx, error) {
+func (db *PostgresDB) BeginTx(ctx context.Context) (pgx.Tx, error) {
 	return db.pool.Begin(ctx)
 }
 

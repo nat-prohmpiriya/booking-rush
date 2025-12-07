@@ -116,18 +116,18 @@
 
 ---
 
-### [ ]  P1-07: Shared Package - Database Connection
+### [x]  P1-07: Shared Package - Database Connection
 | Field | Value |
 |-------|-------|
 | **Description** | สร้าง PostgreSQL connection pool ด้วย pgx |
 | **Technical Context** | `pkg/database/postgres.go` |
 | **Acceptance Criteria** | - Connection pool ทำงานได้<br>- Graceful shutdown<br>- Health check function |
 
-- [ ] Create connection pool with pgx/v5
-- [ ] Implement connection retry logic
-- [ ] Add `Ping()` health check
-- [ ] Add `Close()` graceful shutdown
-- [ ] Write integration tests
+- [x] Create connection pool with pgx/v5
+- [x] Implement connection retry logic
+- [x] Add `Ping()` health check
+- [x] Add `Close()` graceful shutdown
+- [x] Write integration tests
 
 ---
 
