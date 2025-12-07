@@ -101,18 +101,18 @@
 
 ---
 
-### [ ]  P1-06: Shared Package - Response Wrapper
+### [x]  P1-06: Shared Package - Response Wrapper
 | Field | Value |
 |-------|-------|
 | **Description** | สร้าง standard API response wrapper |
 | **Technical Context** | `pkg/response/response.go` |
 | **Acceptance Criteria** | - Success response มี `success: true`, `data`<br>- Error response มี `success: false`, `error.code`, `error.message`<br>- Support pagination meta |
 
-- [ ] Create `SuccessResponse` function
-- [ ] Create `ErrorResponse` function
-- [ ] Create `PaginatedResponse` function
-- [ ] Define error code constants
-- [ ] Write unit tests
+- [x] Create `SuccessResponse` function
+- [x] Create `ErrorResponse` function
+- [x] Create `PaginatedResponse` function
+- [x] Define error code constants
+- [x] Write unit tests
 
 ---
 
