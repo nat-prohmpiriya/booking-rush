@@ -12,7 +12,11 @@
       "Bash(for port in 9000 9001 9002 9090 443 80)",
       "Bash(do nc -zv 100.104.0.42 $port)",
       "Bash(done)",
-      "Bash(ssh:*)"
+      "Bash(ssh:*)",
+      "Bash(go mod init:*)",
+      "Bash(go work sync:*)",
+      "Bash(go get:*)",
+      "Bash(go mod tidy:*)"
     ],
     "deny": [],
     "ask": []

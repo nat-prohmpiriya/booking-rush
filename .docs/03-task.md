@@ -21,72 +21,72 @@
 
 **Goal:** Setup project skeleton and infrastructure
 
-### P1-01: Create Monorepo Directory Structure
+### [x]  P1-01: Create Monorepo Directory Structure
 | Field | Value |
-|-------|-------|
+|-------|-----------|
 | **Description** | สร้างโครงสร้างโฟลเดอร์ตาม monorepo pattern |
 | **Technical Context** | `apps/`, `pkg/`, `scripts/`, `tests/`, `infra/`, `libs/` |
 | **Acceptance Criteria** | - โครงสร้างโฟลเดอร์ตรงตาม 02-plan.md Section 4.1<br>- `go.work` initialized<br>- `pnpm-workspace.yaml` created |
 
-- [ ] Create `apps/` directory with service placeholders
-- [ ] Create `pkg/` directory for shared Go packages
-- [ ] Create `scripts/lua/` and `scripts/migrations/`
-- [ ] Create `infra/` for observability configs
-- [ ] Initialize `go.work` for Go workspace
-- [ ] Create `pnpm-workspace.yaml` for TypeScript
+- [x] Create `apps/` directory with service placeholders
+- [x] Create `pkg/` directory for shared Go packages
+- [x] Create `scripts/lua/` and `scripts/migrations/`
+- [x] Create `infra/` for observability configs
+- [x] Initialize `go.work` for Go workspace
+- [x] Create `pnpm-workspace.yaml` for TypeScript
 
 ---
 
-### P1-02: Initialize Go Service Modules
+### [x]  P1-02: Initialize Go Service Modules
 | Field | Value |
-|-------|-------|
+|-------|-----------|
 | **Description** | Initialize go modules สำหรับแต่ละ service |
 | **Technical Context** | `apps/api-gateway/go.mod`, `apps/auth-service/go.mod`, etc. |
 | **Acceptance Criteria** | - ทุก service มี `go.mod`<br>- `go work sync` ทำงานได้<br>- Shared pkg import ได้ |
 
-- [ ] `go mod init` for api-gateway
-- [ ] `go mod init` for auth-service
-- [ ] `go mod init` for ticket-service
-- [ ] `go mod init` for booking-service
-- [ ] `go mod init` for payment-service
-- [ ] `go mod init` for pkg/
-- [ ] Run `go work use ./apps/* ./pkg`
+- [x] `go mod init` for api-gateway
+- [x] `go mod init` for auth-service
+- [x] `go mod init` for ticket-service
+- [x] `go mod init` for booking-service
+- [x] `go mod init` for payment-service
+- [x] `go mod init` for pkg/
+- [x] Run `go work use ./apps/* ./pkg`
 
 ---
 
-### P1-03: Docker Compose - Core Infrastructure
+### [-]  P1-03: Docker Compose - Core Infrastructure (SKIPPED - ใช้ remote server แทน)
 | Field | Value |
-|-------|-------|
+|-------|-----------|
 | **Description** | สร้าง docker-compose.yml สำหรับ databases และ message queue |
 | **Technical Context** | `docker-compose.yml` |
 | **Acceptance Criteria** | - `docker-compose up` รันได้ไม่มี error<br>- PostgreSQL accessible on :5432<br>- Redis accessible on :6379<br>- Redpanda accessible on :9092 |
 
-- [ ] Add PostgreSQL 16 service with healthcheck
-- [ ] Add Redis 7 service
-- [ ] Add Redpanda service (Kafka-compatible)
-- [ ] Add MongoDB 7 service
-- [ ] Add Redpanda Console (Kafka UI)
-- [ ] Create `.env.example` with all variables
-- [ ] Create Docker network configuration
+- [-] Add PostgreSQL 16 service with healthcheck (ใช้ remote server)
+- [-] Add Redis 7 service (ใช้ remote server)
+- [-] Add Redpanda service (Kafka-compatible) (ใช้ remote server)
+- [-] Add MongoDB 7 service (ใช้ remote server)
+- [-] Add Redpanda Console (Kafka UI)
+- [-] Create `.env.example` with all variables
+- [-] Create Docker network configuration
 
 ---
 
-### P1-04: Shared Package - Config Loader
+### [x]  P1-04: Shared Package - Config Loader
 | Field | Value |
-|-------|-------|
+|-------|-----------|
 | **Description** | สร้าง config loader ด้วย Viper |
 | **Technical Context** | `pkg/config/config.go` |
 | **Acceptance Criteria** | - Load config จาก env vars<br>- Load config จาก .env file<br>- Type-safe config struct |
 
-- [ ] Create `Config` struct with all app settings
-- [ ] Implement `Load()` function with Viper
-- [ ] Support environment variable override
-- [ ] Add config validation
-- [ ] Write unit tests
+- [x] Create `Config` struct with all app settings
+- [x] Implement `Load()` function with Viper
+- [x] Support environment variable override
+- [x] Add config validation
+- [x] Write unit tests
 
 ---
 
-### P1-05: Shared Package - Logger
+### [ ]  P1-05: Shared Package - Logger
 | Field | Value |
 |-------|-------|
 | **Description** | สร้าง structured JSON logger ด้วย Zap |
@@ -101,7 +101,7 @@
 
 ---
 
-### P1-06: Shared Package - Response Wrapper
+### [ ]  P1-06: Shared Package - Response Wrapper
 | Field | Value |
 |-------|-------|
 | **Description** | สร้าง standard API response wrapper |
@@ -116,7 +116,7 @@
 
 ---
 
-### P1-07: Shared Package - Database Connection
+### [ ]  P1-07: Shared Package - Database Connection
 | Field | Value |
 |-------|-------|
 | **Description** | สร้าง PostgreSQL connection pool ด้วย pgx |
@@ -131,7 +131,7 @@
 
 ---
 
-### P1-08: Shared Package - Redis Client
+### [ ]  P1-08: Shared Package - Redis Client
 | Field | Value |
 |-------|-------|
 | **Description** | สร้าง Redis client wrapper |
@@ -146,7 +146,7 @@
 
 ---
 
-### P1-09: Database Migrations - Core Tables
+### [ ]  P1-09: Database Migrations - Core Tables
 | Field | Value |
 |-------|-------|
 | **Description** | สร้าง SQL migrations สำหรับ core tables |
@@ -165,7 +165,7 @@
 
 ---
 
-### P1-10: Database Migrations - Booking Tables
+### [ ]  P1-10: Database Migrations - Booking Tables
 | Field | Value |
 |-------|-------|
 | **Description** | สร้าง SQL migrations สำหรับ booking และ payment tables |
@@ -181,7 +181,7 @@
 
 ---
 
-### P1-11: API Gateway - Basic Setup
+### [ ]  P1-11: API Gateway - Basic Setup
 | Field | Value |
 |-------|-------|
 | **Description** | Setup API Gateway ด้วย Gin framework |
@@ -199,7 +199,7 @@
 
 ---
 
-### P1-12: Makefile Commands
+### [ ]  P1-12: Makefile Commands
 | Field | Value |
 |-------|-------|
 | **Description** | สร้าง Makefile สำหรับ common commands |
@@ -215,7 +215,7 @@
 
 ---
 
-### P1-13: Basic OTel Setup (Early Observability)
+### [ ]  P1-13: Basic OTel Setup (Early Observability)
 | Field | Value |
 |-------|-------|
 | **Description** | Setup basic OpenTelemetry tracing ตั้งแต่ Phase 1 เพื่อใช้ debug race conditions และ performance ใน Phase 2+ |
@@ -240,7 +240,7 @@
 
 **Goal:** Achieve 10,000 RPS on booking endpoint with zero overselling
 
-### P2-01: Redis Lua Script - Reserve Seats
+### [ ]  P2-01: Redis Lua Script - Reserve Seats
 | Field | Value |
 |-------|-------|
 | **Description** | เขียน Lua script สำหรับ atomic seat reservation |
@@ -256,7 +256,7 @@
 
 ---
 
-### P2-02: Redis Lua Script - Release Seats
+### [ ]  P2-02: Redis Lua Script - Release Seats
 | Field | Value |
 |-------|-------|
 | **Description** | เขียน Lua script สำหรับ release seats กลับ inventory |
@@ -270,7 +270,7 @@
 
 ---
 
-### P2-03: Redis Lua Script - Confirm Booking
+### [ ]  P2-03: Redis Lua Script - Confirm Booking
 | Field | Value |
 |-------|-------|
 | **Description** | เขียน Lua script สำหรับ confirm booking |
@@ -284,7 +284,7 @@
 
 ---
 
-### P2-04: Booking Service - Project Structure
+### [ ]  P2-04: Booking Service - Project Structure
 | Field | Value |
 |-------|-------|
 | **Description** | สร้าง Clean Architecture structure สำหรับ Booking Service |
@@ -301,7 +301,7 @@
 
 ---
 
-### P2-05: Booking Service - Domain Models
+### [ ]  P2-05: Booking Service - Domain Models
 | Field | Value |
 |-------|-------|
 | **Description** | สร้าง domain entities สำหรับ booking |
@@ -316,7 +316,7 @@
 
 ---
 
-### P2-06: Booking Service - Repository Layer
+### [ ]  P2-06: Booking Service - Repository Layer
 | Field | Value |
 |-------|-------|
 | **Description** | Implement repository สำหรับ PostgreSQL และ Redis |
@@ -333,7 +333,7 @@
 
 ---
 
-### P2-07: Booking Service - Service Layer
+### [ ]  P2-07: Booking Service - Service Layer
 | Field | Value |
 |-------|-------|
 | **Description** | Implement business logic สำหรับ booking |
@@ -350,7 +350,7 @@
 
 ---
 
-### P2-08: Booking Service - HTTP Handlers
+### [ ]  P2-08: Booking Service - HTTP Handlers
 | Field | Value |
 |-------|-------|
 | **Description** | Implement HTTP handlers สำหรับ booking endpoints |
@@ -368,7 +368,7 @@
 
 ---
 
-### P2-09: Booking Service - Kafka Producer
+### [ ]  P2-09: Booking Service - Kafka Producer
 | Field | Value |
 |-------|-------|
 | **Description** | Implement Kafka producer สำหรับ booking events |
@@ -383,7 +383,7 @@
 
 ---
 
-### P2-10: Inventory Sync Worker
+### [ ]  P2-10: Inventory Sync Worker
 | Field | Value |
 |-------|-------|
 | **Description** | สร้าง worker สำหรับ sync Redis → PostgreSQL |
@@ -398,7 +398,7 @@
 
 ---
 
-### P2-11: Load Testing Setup
+### [ ]  P2-11: Load Testing Setup
 | Field | Value |
 |-------|-------|
 | **Description** | Setup k6 สำหรับ load testing |
@@ -413,7 +413,7 @@
 
 ---
 
-### P2-12: Performance Optimization
+### [ ]  P2-12: Performance Optimization
 | Field | Value |
 |-------|-------|
 | **Description** | Optimize จนได้ 10k RPS |
@@ -429,7 +429,7 @@
 
 ---
 
-### P2-13: Dirty Scenario Testing
+### [ ]  P2-13: Dirty Scenario Testing
 | Field | Value |
 |-------|-------|
 | **Description** | Test edge cases ที่อาจเกิดขึ้นจริง เช่น client disconnect, timeout, concurrent booking |
@@ -455,7 +455,7 @@
 
 ---
 
-### P2-14: Thundering Herd Rejection Efficiency
+### [ ]  P2-14: Thundering Herd Rejection Efficiency
 | Field | Value |
 |-------|-------|
 | **Description** | ตรวจสอบว่า Booking Service ปฏิเสธ requests เกินกำลังได้อย่างมีประสิทธิภาพ (ก่อน Virtual Queue พร้อมใน Phase 6) |
@@ -486,7 +486,7 @@
 
 **Goal:** Complete auth flow and event management
 
-### P3-01: Auth Service - Project Structure
+### [ ]  P3-01: Auth Service - Project Structure
 | Field | Value |
 |-------|-------|
 | **Description** | Setup Auth Service structure |
@@ -500,7 +500,7 @@
 
 ---
 
-### P3-02: Auth Service - User Registration
+### [ ]  P3-02: Auth Service - User Registration
 | Field | Value |
 |-------|-------|
 | **Description** | Implement user registration |
@@ -517,7 +517,7 @@
 
 ---
 
-### P3-03: Auth Service - Login & JWT
+### [ ]  P3-03: Auth Service - Login & JWT
 | Field | Value |
 |-------|-------|
 | **Description** | Implement login with JWT |
@@ -533,7 +533,7 @@
 
 ---
 
-### P3-04: Auth Service - Token Refresh
+### [ ]  P3-04: Auth Service - Token Refresh
 | Field | Value |
 |-------|-------|
 | **Description** | Implement token refresh |
@@ -548,7 +548,7 @@
 
 ---
 
-### P3-05: Auth Service - Logout
+### [ ]  P3-05: Auth Service - Logout
 | Field | Value |
 |-------|-------|
 | **Description** | Implement logout |
@@ -561,7 +561,7 @@
 
 ---
 
-### P3-06: Auth Service - Profile Endpoints
+### [ ]  P3-06: Auth Service - Profile Endpoints
 | Field | Value |
 |-------|-------|
 | **Description** | Implement profile management |
@@ -575,7 +575,7 @@
 
 ---
 
-### P3-07: JWT Middleware
+### [ ]  P3-07: JWT Middleware
 | Field | Value |
 |-------|-------|
 | **Description** | Create JWT validation middleware |
@@ -590,7 +590,7 @@
 
 ---
 
-### P3-08: Ticket Service - Project Structure
+### [ ]  P3-08: Ticket Service - Project Structure
 | Field | Value |
 |-------|-------|
 | **Description** | Setup Ticket Service structure |
@@ -604,7 +604,7 @@
 
 ---
 
-### P3-09: Ticket Service - Event CRUD
+### [ ]  P3-09: Ticket Service - Event CRUD
 | Field | Value |
 |-------|-------|
 | **Description** | Implement Event CRUD operations |
@@ -623,7 +623,7 @@
 
 ---
 
-### P3-10: Ticket Service - Show Management
+### [ ]  P3-10: Ticket Service - Show Management
 | Field | Value |
 |-------|-------|
 | **Description** | Implement Show management |
@@ -638,7 +638,7 @@
 
 ---
 
-### P3-11: Ticket Service - Zone Management
+### [ ]  P3-11: Ticket Service - Zone Management
 | Field | Value |
 |-------|-------|
 | **Description** | Implement Zone/Seat management |
@@ -654,7 +654,7 @@
 
 ---
 
-### P3-12: Ticket Service - Redis Caching
+### [ ]  P3-12: Ticket Service - Redis Caching
 | Field | Value |
 |-------|-------|
 | **Description** | Add Redis caching สำหรับ events |
@@ -669,7 +669,7 @@
 
 ---
 
-### P3-13: API Gateway - Rate Limiting
+### [ ]  P3-13: API Gateway - Rate Limiting
 | Field | Value |
 |-------|-------|
 | **Description** | Implement Token Bucket rate limiting |
@@ -685,7 +685,7 @@
 
 ---
 
-### P3-14: API Gateway - Service Routing
+### [ ]  P3-14: API Gateway - Service Routing
 | Field | Value |
 |-------|-------|
 | **Description** | Implement routing to backend services |
@@ -708,7 +708,7 @@
 
 **Goal:** Complete payment flow with data consistency using Saga
 
-### P4-01: Payment Service - Project Structure
+### [ ]  P4-01: Payment Service - Project Structure
 | Field | Value |
 |-------|-------|
 | **Description** | Setup Payment Service structure |
@@ -722,7 +722,7 @@
 
 ---
 
-### P4-02: Payment Service - Kafka Consumer
+### [ ]  P4-02: Payment Service - Kafka Consumer
 | Field | Value |
 |-------|-------|
 | **Description** | Implement Kafka consumer สำหรับ booking events |
@@ -737,7 +737,7 @@
 
 ---
 
-### P4-03: Payment Service - Payment Processing
+### [ ]  P4-03: Payment Service - Payment Processing
 | Field | Value |
 |-------|-------|
 | **Description** | Implement payment processing (mock) |
@@ -753,7 +753,7 @@
 
 ---
 
-### P4-04: Payment Service - HTTP Endpoints
+### [ ]  P4-04: Payment Service - HTTP Endpoints
 | Field | Value |
 |-------|-------|
 | **Description** | Implement payment HTTP endpoints |
@@ -767,7 +767,7 @@
 
 ---
 
-### P4-05: Saga Orchestrator - Setup
+### [ ]  P4-05: Saga Orchestrator - Setup
 | Field | Value |
 |-------|-------|
 | **Description** | Create Saga orchestrator framework |
@@ -783,7 +783,7 @@
 
 ---
 
-### P4-06: Saga Orchestrator - State Machine
+### [ ]  P4-06: Saga Orchestrator - State Machine
 | Field | Value |
 |-------|-------|
 | **Description** | Implement Saga state machine |
@@ -798,7 +798,7 @@
 
 ---
 
-### P4-07: Booking Saga Implementation
+### [ ]  P4-07: Booking Saga Implementation
 | Field | Value |
 |-------|-------|
 | **Description** | Implement Booking Saga with all steps |
@@ -816,7 +816,7 @@
 
 ---
 
-### P4-08: Saga Kafka Integration
+### [ ]  P4-08: Saga Kafka Integration
 | Field | Value |
 |-------|-------|
 | **Description** | Integrate Saga with Kafka commands/events |
@@ -832,7 +832,7 @@
 
 ---
 
-### P4-09: Idempotency Implementation
+### [ ]  P4-09: Idempotency Implementation
 | Field | Value |
 |-------|-------|
 | **Description** | Implement idempotency for all write operations |
@@ -847,7 +847,7 @@
 
 ---
 
-### P4-10: Transactional Outbox
+### [ ]  P4-10: Transactional Outbox
 | Field | Value |
 |-------|-------|
 | **Description** | Implement Transactional Outbox pattern |
@@ -863,7 +863,7 @@
 
 ---
 
-### P4-11: Reservation Expiry Worker
+### [ ]  P4-11: Reservation Expiry Worker
 | Field | Value |
 |-------|-------|
 | **Description** | Implement worker สำหรับ expire reservations |
@@ -879,7 +879,7 @@
 
 ---
 
-### P4-12: Retry Logic with Backoff
+### [ ]  P4-12: Retry Logic with Backoff
 | Field | Value |
 |-------|-------|
 | **Description** | Implement retry logic with exponential backoff |
@@ -903,7 +903,7 @@
 
 **Goal:** Implement Notification and Analytics services with NestJS + MongoDB
 
-### P5-01: Notification Service - Project Setup
+### [ ]  P5-01: Notification Service - Project Setup
 | Field | Value |
 |-------|-------|
 | **Description** | Setup NestJS project for Notification Service |
@@ -919,7 +919,7 @@
 
 ---
 
-### P5-02: Notification Service - MongoDB Schemas
+### [ ]  P5-02: Notification Service - MongoDB Schemas
 | Field | Value |
 |-------|-------|
 | **Description** | Create MongoDB schemas for notifications |
@@ -934,7 +934,7 @@
 
 ---
 
-### P5-03: Notification Service - Email Module
+### [ ]  P5-03: Notification Service - Email Module
 | Field | Value |
 |-------|-------|
 | **Description** | Implement email sending module |
@@ -949,7 +949,7 @@
 
 ---
 
-### P5-04: Notification Service - Kafka Consumer
+### [ ]  P5-04: Notification Service - Kafka Consumer
 | Field | Value |
 |-------|-------|
 | **Description** | Consume booking/payment events |
@@ -966,7 +966,7 @@
 
 ---
 
-### P5-05: Analytics Service - Project Setup
+### [ ]  P5-05: Analytics Service - Project Setup
 | Field | Value |
 |-------|-------|
 | **Description** | Setup NestJS project for Analytics Service |
@@ -981,7 +981,7 @@
 
 ---
 
-### P5-06: Analytics Service - MongoDB Schemas
+### [ ]  P5-06: Analytics Service - MongoDB Schemas
 | Field | Value |
 |-------|-------|
 | **Description** | Create MongoDB schemas for analytics |
@@ -996,7 +996,7 @@
 
 ---
 
-### P5-07: Analytics Service - Event Aggregation
+### [ ]  P5-07: Analytics Service - Event Aggregation
 | Field | Value |
 |-------|-------|
 | **Description** | Consume events and aggregate metrics |
@@ -1011,7 +1011,7 @@
 
 ---
 
-### P5-08: Analytics Service - REST API
+### [ ]  P5-08: Analytics Service - REST API
 | Field | Value |
 |-------|-------|
 | **Description** | Implement REST API for dashboard |
@@ -1034,7 +1034,7 @@
 
 **Goal:** Implement virtual queue and audit logging
 
-### P6-01: Virtual Queue - Join Queue
+### [ ]  P6-01: Virtual Queue - Join Queue
 | Field | Value |
 |-------|-------|
 | **Description** | Implement queue join endpoint |
@@ -1049,7 +1049,7 @@
 
 ---
 
-### P6-02: Virtual Queue - Queue Status
+### [ ]  P6-02: Virtual Queue - Queue Status
 | Field | Value |
 |-------|-------|
 | **Description** | Implement queue status endpoint |
@@ -1064,7 +1064,7 @@
 
 ---
 
-### P6-03: Virtual Queue - Queue Pass Token
+### [ ]  P6-03: Virtual Queue - Queue Pass Token
 | Field | Value |
 |-------|-------|
 | **Description** | Generate Queue Pass Token when user reaches front |
@@ -1079,7 +1079,7 @@
 
 ---
 
-### P6-04: API Gateway - Queue Pass Validation
+### [ ]  P6-04: API Gateway - Queue Pass Validation
 | Field | Value |
 |-------|-------|
 | **Description** | Validate Queue Pass in API Gateway |
@@ -1095,7 +1095,7 @@
 
 ---
 
-### P6-05: Queue Release Batch Worker
+### [ ]  P6-05: Queue Release Batch Worker
 | Field | Value |
 |-------|-------|
 | **Description** | Release users from queue in batches |
@@ -1110,7 +1110,7 @@
 
 ---
 
-### P6-06: Audit Logging Middleware
+### [ ]  P6-06: Audit Logging Middleware
 | Field | Value |
 |-------|-------|
 | **Description** | Implement audit logging middleware |
@@ -1125,7 +1125,7 @@
 
 ---
 
-### P6-07: Audit Log Endpoints
+### [ ]  P6-07: Audit Log Endpoints
 | Field | Value |
 |-------|-------|
 | **Description** | Implement audit log viewing endpoints |
@@ -1148,7 +1148,7 @@
 
 **Goal:** User-facing web application
 
-### P7-01: Next.js Project Setup
+### [ ]  P7-01: Next.js Project Setup
 | Field | Value |
 |-------|-------|
 | **Description** | Initialize Next.js 15 project |
@@ -1163,7 +1163,7 @@
 
 ---
 
-### P7-02: API Client Setup
+### [ ]  P7-02: API Client Setup
 | Field | Value |
 |-------|-------|
 | **Description** | Setup API client with Axios |
@@ -1178,7 +1178,7 @@
 
 ---
 
-### P7-03: Auth State Management
+### [ ]  P7-03: Auth State Management
 | Field | Value |
 |-------|-------|
 | **Description** | Implement auth state with Zustand |
@@ -1193,7 +1193,7 @@
 
 ---
 
-### P7-04: Auth Pages
+### [ ]  P7-04: Auth Pages
 | Field | Value |
 |-------|-------|
 | **Description** | Create auth pages |
@@ -1208,7 +1208,7 @@
 
 ---
 
-### P7-05: Event List Page
+### [ ]  P7-05: Event List Page
 | Field | Value |
 |-------|-------|
 | **Description** | Create event listing page |
@@ -1223,7 +1223,7 @@
 
 ---
 
-### P7-06: Event Detail Page
+### [ ]  P7-06: Event Detail Page
 | Field | Value |
 |-------|-------|
 | **Description** | Create event detail page |
@@ -1238,7 +1238,7 @@
 
 ---
 
-### P7-07: Booking Flow - Zone Selection
+### [ ]  P7-07: Booking Flow - Zone Selection
 | Field | Value |
 |-------|-------|
 | **Description** | Create zone selection page |
@@ -1253,7 +1253,7 @@
 
 ---
 
-### P7-08: Booking Flow - Payment
+### [ ]  P7-08: Booking Flow - Payment
 | Field | Value |
 |-------|-------|
 | **Description** | Create payment page |
@@ -1269,7 +1269,7 @@
 
 ---
 
-### P7-09: Booking Confirmation
+### [ ]  P7-09: Booking Confirmation
 | Field | Value |
 |-------|-------|
 | **Description** | Create confirmation page |
@@ -1283,7 +1283,7 @@
 
 ---
 
-### P7-10: Virtual Queue UI
+### [ ]  P7-10: Virtual Queue UI
 | Field | Value |
 |-------|-------|
 | **Description** | Create queue waiting room page |
@@ -1298,7 +1298,7 @@
 
 ---
 
-### P7-11: User Dashboard
+### [ ]  P7-11: User Dashboard
 | Field | Value |
 |-------|-------|
 | **Description** | Create user dashboard pages |
@@ -1320,7 +1320,7 @@
 
 **Goal:** Production-grade monitoring with unified OTel stack
 
-### P8-01: OpenTelemetry Package
+### [ ]  P8-01: OpenTelemetry Package
 | Field | Value |
 |-------|-------|
 | **Description** | Create shared OTel package |
@@ -1336,7 +1336,7 @@
 
 ---
 
-### P8-02: Service Instrumentation
+### [ ]  P8-02: Service Instrumentation
 | Field | Value |
 |-------|-------|
 | **Description** | Add OTel instrumentation to all services |
@@ -1352,7 +1352,7 @@
 
 ---
 
-### P8-03: Custom Metrics
+### [ ]  P8-03: Custom Metrics
 | Field | Value |
 |-------|-------|
 | **Description** | Implement custom business metrics |
@@ -1368,7 +1368,7 @@
 
 ---
 
-### P8-04: Log-Trace Correlation
+### [ ]  P8-04: Log-Trace Correlation
 | Field | Value |
 |-------|-------|
 | **Description** | Add trace context to logs |
@@ -1382,7 +1382,7 @@
 
 ---
 
-### P8-05: Infrastructure - OTel Collector
+### [ ]  P8-05: Infrastructure - OTel Collector
 | Field | Value |
 |-------|-------|
 | **Description** | Setup OTel Collector in Docker Compose |
@@ -1398,7 +1398,7 @@
 
 ---
 
-### P8-06: Infrastructure - Observability Stack
+### [ ]  P8-06: Infrastructure - Observability Stack
 | Field | Value |
 |-------|-------|
 | **Description** | Setup Jaeger, Prometheus, Loki, Grafana |
@@ -1414,7 +1414,7 @@
 
 ---
 
-### P8-07: Grafana Dashboards
+### [ ]  P8-07: Grafana Dashboards
 | Field | Value |
 |-------|-------|
 | **Description** | Create Grafana dashboards |
@@ -1429,7 +1429,7 @@
 
 ---
 
-### P8-08: Alerting Rules
+### [ ]  P8-08: Alerting Rules
 | Field | Value |
 |-------|-------|
 | **Description** | Configure alerting rules |
@@ -1453,7 +1453,7 @@
 
 **Goal:** Ready for production deployment
 
-### P9-01: Security Audit
+### [ ]  P9-01: Security Audit
 | Field | Value |
 |-------|-------|
 | **Description** | Comprehensive security review |
@@ -1470,7 +1470,7 @@
 
 ---
 
-### P9-02: Performance Profiling
+### [ ]  P9-02: Performance Profiling
 | Field | Value |
 |-------|-------|
 | **Description** | Profile and optimize hot paths |
@@ -1486,7 +1486,7 @@
 
 ---
 
-### P9-03: End-to-End Load Test
+### [ ]  P9-03: End-to-End Load Test
 | Field | Value |
 |-------|-------|
 | **Description** | Full system load test |
@@ -1502,7 +1502,7 @@
 
 ---
 
-### P9-04: API Documentation
+### [ ]  P9-04: API Documentation
 | Field | Value |
 |-------|-------|
 | **Description** | Create OpenAPI/Swagger documentation |
@@ -1518,7 +1518,7 @@
 
 ---
 
-### P9-05: Operations Runbook
+### [ ]  P9-05: Operations Runbook
 | Field | Value |
 |-------|-------|
 | **Description** | Create runbook for operations |
@@ -1533,7 +1533,7 @@
 
 ---
 
-### P9-06: Production Deployment
+### [ ]  P9-06: Production Deployment
 | Field | Value |
 |-------|-------|
 | **Description** | Deploy to production environment |
