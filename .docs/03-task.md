@@ -575,18 +575,18 @@
 
 ---
 
-### [ ]  P3-07: JWT Middleware
+### [x]  P3-07: JWT Middleware
 | Field | Value |
 |-------|-------|
 | **Description** | Create JWT validation middleware |
 | **Technical Context** | `pkg/middleware/jwt.go` |
 | **Acceptance Criteria** | - Validates JWT from Authorization header<br>- Injects user context into request<br>- Returns 401 for invalid/expired tokens |
 
-- [ ] Create JWT middleware
-- [ ] Parse and validate token
-- [ ] Extract claims and inject into context
-- [ ] Handle expired tokens
-- [ ] Write tests
+- [x] Create JWT middleware
+- [x] Parse and validate token
+- [x] Extract claims and inject into context
+- [x] Handle expired tokens
+- [x] Write tests
 
 ---
 
