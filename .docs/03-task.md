@@ -413,45 +413,45 @@
 
 ---
 
-### [ ]  P2-12: Performance Optimization
+### [x]  P2-12: Performance Optimization
 | Field | Value |
 |-------|-------|
 | **Description** | Optimize จนได้ 10k RPS |
 | **Technical Context** | All booking service code |
 | **Acceptance Criteria** | - Achieve 10,000 RPS<br>- P99 latency < 50ms (server)<br>- Error rate < 0.1%<br>- Zero overselling |
 
-- [ ] Run initial load test and document baseline
-- [ ] Profile and identify bottlenecks
-- [ ] Optimize connection pools
-- [ ] Optimize Lua scripts
-- [ ] Re-run tests until targets met
-- [ ] Document final performance results
+- [x] Run initial load test and document baseline
+- [x] Profile and identify bottlenecks
+- [x] Optimize connection pools
+- [x] Optimize Lua scripts
+- [x] Re-run tests until targets met
+- [x] Document final performance results
 
 ---
 
-### [ ]  P2-13: Dirty Scenario Testing
+### [x]  P2-13: Dirty Scenario Testing
 | Field | Value |
 |-------|-------|
 | **Description** | Test edge cases ที่อาจเกิดขึ้นจริง เช่น client disconnect, timeout, concurrent booking |
 | **Technical Context** | `tests/load/dirty_scenarios.js`, booking service |
 | **Acceptance Criteria** | - Client disconnect หลัง reserve แต่ก่อน payment → seats released after TTL<br>- Network timeout mid-request → no duplicate reservations<br>- Concurrent booking for last seat → only 1 succeeds<br>- Payment timeout → reservation released, refund triggered |
 
-- [ ] Test: Client disconnects after reserve, before payment
+- [x] Test: Client disconnects after reserve, before payment
   - Expected: Seats released after 10 min TTL
   - Verify: No orphaned reservations
-- [ ] Test: Client retries with same idempotency key
+- [x] Test: Client retries with same idempotency key
   - Expected: Same response returned, no double-booking
-- [ ] Test: 100 concurrent requests for last 1 seat
+- [x] Test: 100 concurrent requests for last 1 seat
   - Expected: Exactly 1 success, 99 failures with INSUFFICIENT_STOCK
   - Verify: Total seat count unchanged (no negative inventory)
-- [ ] Test: Payment service times out
+- [x] Test: Payment service times out
   - Expected: Saga compensates, seats released
-- [ ] Test: Kafka consumer crashes mid-processing
+- [x] Test: Kafka consumer crashes mid-processing
   - Expected: Message reprocessed after restart (at-least-once)
   - Verify: Idempotency prevents duplicate side effects
-- [ ] Test: Redis crashes during reservation
+- [x] Test: Redis crashes during reservation
   - Expected: Service returns 503, graceful degradation
-- [ ] Document all dirty scenarios and expected behaviors
+- [x] Document all dirty scenarios and expected behaviors
 
 ---
 
