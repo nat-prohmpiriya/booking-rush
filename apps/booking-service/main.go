@@ -125,8 +125,10 @@ func main() {
 		{
 			bookings.POST("/reserve", container.BookingHandler.ReserveSeats)
 			bookings.GET("", container.BookingHandler.GetUserBookings)
+			bookings.GET("/pending", container.BookingHandler.GetPendingBookings)
 			bookings.GET("/:id", container.BookingHandler.GetBooking)
 			bookings.POST("/:id/confirm", container.BookingHandler.ConfirmBooking)
+			bookings.POST("/:id/cancel", container.BookingHandler.CancelBooking)
 			bookings.DELETE("/:id", container.BookingHandler.ReleaseBooking)
 		}
 	}

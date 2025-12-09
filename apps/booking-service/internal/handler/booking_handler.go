@@ -3,6 +3,7 @@ package handler
 import (
 	"errors"
 	"net/http"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"github.com/prohmpiriya/booking-rush-10k-rps/apps/booking-service/internal/domain"
@@ -114,6 +115,35 @@ func (h *BookingHandler) ReleaseBooking(c *gin.Context) {
 	c.JSON(http.StatusOK, result)
 }
 
+// CancelBooking handles POST /bookings/:id/cancel
+func (h *BookingHandler) CancelBooking(c *gin.Context) {
+	userID := c.GetString("user_id")
+	if userID == "" {
+		c.JSON(http.StatusUnauthorized, dto.ErrorResponse{
+			Error: "unauthorized",
+			Code:  "UNAUTHORIZED",
+		})
+		return
+	}
+
+	bookingID := c.Param("id")
+	if bookingID == "" {
+		c.JSON(http.StatusBadRequest, dto.ErrorResponse{
+			Error: "booking id required",
+			Code:  "INVALID_REQUEST",
+		})
+		return
+	}
+
+	result, err := h.bookingService.CancelBooking(c.Request.Context(), bookingID, userID)
+	if err != nil {
+		h.handleError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, result)
+}
+
 // GetBooking handles GET /bookings/:id
 func (h *BookingHandler) GetBooking(c *gin.Context) {
 	userID := c.GetString("user_id")
@@ -158,22 +188,12 @@ func (h *BookingHandler) GetUserBookings(c *gin.Context) {
 	page := 1
 	pageSize := 20
 	if p := c.Query("page"); p != "" {
-		// Simple validation, ignore errors
-		var n int
-		if _, err := c.GetQuery("page"); err {
-			n = 1
-		}
-		if n > 0 {
+		if n, err := strconv.Atoi(p); err == nil && n > 0 {
 			page = n
 		}
 	}
 	if ps := c.Query("page_size"); ps != "" {
-		// Simple validation, ignore errors
-		var n int
-		if _, err := c.GetQuery("page_size"); err {
-			n = 20
-		}
-		if n > 0 && n <= 100 {
+		if n, err := strconv.Atoi(ps); err == nil && n > 0 && n <= 100 {
 			pageSize = n
 		}
 	}
@@ -185,6 +205,28 @@ func (h *BookingHandler) GetUserBookings(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, result)
+}
+
+// GetPendingBookings handles GET /bookings/pending
+func (h *BookingHandler) GetPendingBookings(c *gin.Context) {
+	// Parse limit parameter
+	limit := 100
+	if l := c.Query("limit"); l != "" {
+		if n, err := strconv.Atoi(l); err == nil && n > 0 && n <= 1000 {
+			limit = n
+		}
+	}
+
+	result, err := h.bookingService.GetPendingBookings(c.Request.Context(), limit)
+	if err != nil {
+		h.handleError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, dto.SuccessResponse{
+		Success: true,
+		Data:    result,
+	})
 }
 
 // handleError converts domain errors to HTTP responses
