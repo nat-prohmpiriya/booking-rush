@@ -17,7 +17,7 @@
 
 ---
 
-## Phase 1: Foundation & Infrastructure
+## [x] Phase 1: Foundation & Infrastructure
 
 **Goal:** Setup project skeleton and infrastructure
 
@@ -236,7 +236,7 @@
 
 ---
 
-## Phase 2: Core Booking Engine ⭐
+## [x] Phase 2: Core Booking Engine ⭐
 
 **Goal:** Achieve 10,000 RPS on booking endpoint with zero overselling
 
@@ -482,7 +482,7 @@
 
 ---
 
-## Phase 3: Authentication & Events
+## [x] Phase 3: Authentication & Events
 
 **Goal:** Complete auth flow and event management
 
@@ -684,18 +684,18 @@
 
 ---
 
-### [ ]  P3-14: API Gateway - Service Routing
+### [x]  P3-14: API Gateway - Service Routing
 | Field | Value |
 |-------|-------|
 | **Description** | Implement routing to backend services |
-| **Technical Context** | `apps/api-gateway/internal/proxy/` |
+| **Technical Context** | `apps/api-gateway/internal/proxy/proxy.go`, `router.go` |
 | **Acceptance Criteria** | - Route `/auth/*` to Auth Service<br>- Route `/events/*` to Ticket Service<br>- Route `/bookings/*` to Booking Service<br>- JWT middleware on protected routes |
 
-- [ ] Implement reverse proxy
-- [ ] Configure route mappings
-- [ ] Add JWT middleware to protected routes
-- [ ] Pass user context to backend services
-- [ ] Write tests
+- [x] Implement reverse proxy
+- [x] Configure route mappings
+- [x] Add JWT middleware to protected routes
+- [x] Pass user context to backend services
+- [x] Write tests
 
 ---
 

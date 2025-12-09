@@ -13,6 +13,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/prohmpiriya/booking-rush-10k-rps/apps/api-gateway/internal/handler"
 	"github.com/prohmpiriya/booking-rush-10k-rps/apps/api-gateway/internal/middleware"
+	"github.com/prohmpiriya/booking-rush-10k-rps/apps/api-gateway/internal/proxy"
 	"github.com/prohmpiriya/booking-rush-10k-rps/pkg/config"
 	"github.com/prohmpiriya/booking-rush-10k-rps/pkg/database"
 	"github.com/prohmpiriya/booking-rush-10k-rps/pkg/logger"
@@ -125,6 +126,29 @@ func main() {
 		})
 	}
 
+	// Configure reverse proxy for backend services
+	authServiceURL := getEnv("AUTH_SERVICE_URL", "http://localhost:8081")
+	ticketServiceURL := getEnv("TICKET_SERVICE_URL", "http://localhost:8082")
+	bookingServiceURL := getEnv("BOOKING_SERVICE_URL", "http://localhost:8083")
+	paymentServiceURL := getEnv("PAYMENT_SERVICE_URL", "http://localhost:8084")
+
+	proxyConfig := proxy.ConfigFromEnv(
+		authServiceURL,
+		ticketServiceURL,
+		bookingServiceURL,
+		paymentServiceURL,
+		cfg.JWT.Secret,
+	)
+
+	reverseProxy := proxy.NewReverseProxy(proxyConfig)
+	proxyRouter := proxy.NewRouter(reverseProxy, cfg.JWT.Secret)
+
+	// Use catch-all handler for proxied routes
+	router.NoRoute(proxyRouter.MatchHandler())
+
+	log.Info(fmt.Sprintf("Proxy configured: auth=%s, ticket=%s, booking=%s, payment=%s",
+		authServiceURL, ticketServiceURL, bookingServiceURL, paymentServiceURL))
+
 	// Create HTTP server
 	addr := fmt.Sprintf("%s:%d", cfg.Server.Host, cfg.Server.Port)
 	srv := &http.Server{
@@ -158,4 +182,12 @@ func main() {
 	}
 
 	log.Info("Server exited gracefully")
+}
+
+// getEnv returns environment variable value or default
+func getEnv(key, defaultValue string) string {
+	if value := os.Getenv(key); value != "" {
+		return value
+	}
+	return defaultValue
 }
