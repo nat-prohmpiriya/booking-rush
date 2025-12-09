@@ -8,4 +8,5 @@ use (
 	./apps/ticket-service
 	./pkg
 	./scripts
+	./tests/integration
 )
