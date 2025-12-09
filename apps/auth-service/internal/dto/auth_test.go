@@ -155,3 +155,55 @@ func TestRegisterRequest_ValidateEmail(t *testing.T) {
 		})
 	}
 }
+
+func TestUpdateProfileRequest_Validate(t *testing.T) {
+	tests := []struct {
+		name    string
+		req     UpdateProfileRequest
+		want    bool
+		wantMsg string
+	}{
+		{
+			name:    "valid name",
+			req:     UpdateProfileRequest{Name: "John Doe"},
+			want:    true,
+			wantMsg: "",
+		},
+		{
+			name:    "valid minimum length name",
+			req:     UpdateProfileRequest{Name: "Jo"},
+			want:    true,
+			wantMsg: "",
+		},
+		{
+			name:    "empty name",
+			req:     UpdateProfileRequest{Name: ""},
+			want:    false,
+			wantMsg: "At least one field must be provided for update",
+		},
+		{
+			name:    "name too short",
+			req:     UpdateProfileRequest{Name: "J"},
+			want:    false,
+			wantMsg: "Name must be at least 2 characters",
+		},
+		{
+			name:    "name too long",
+			req:     UpdateProfileRequest{Name: "This name is way too long and exceeds the maximum allowed length of 100 characters which should fail validation"},
+			want:    false,
+			wantMsg: "Name must not exceed 100 characters",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, msg := tt.req.Validate()
+			if got != tt.want {
+				t.Errorf("Validate() got = %v, want %v", got, tt.want)
+			}
+			if msg != tt.wantMsg {
+				t.Errorf("Validate() msg = %v, want %v", msg, tt.wantMsg)
+			}
+		})
+	}
+}

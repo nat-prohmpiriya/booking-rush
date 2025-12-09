@@ -175,6 +175,46 @@ func (h *AuthHandler) Me(c *gin.Context) {
 	}))
 }
 
+// UpdateMe updates current user profile
+// PUT /api/v1/auth/me
+func (h *AuthHandler) UpdateMe(c *gin.Context) {
+	userID, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, response.Unauthorized("User not authenticated"))
+		return
+	}
+
+	var req dto.UpdateProfileRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, response.BadRequest(err.Error()))
+		return
+	}
+
+	// Validate update request
+	if valid, msg := req.Validate(); !valid {
+		c.JSON(http.StatusBadRequest, response.Error("VALIDATION_ERROR", msg))
+		return
+	}
+
+	user, err := h.authService.UpdateProfile(c.Request.Context(), userID.(string), &req)
+	if err != nil {
+		if errors.Is(err, service.ErrUserNotFound) {
+			c.JSON(http.StatusNotFound, response.NotFound("User not found"))
+			return
+		}
+		c.JSON(http.StatusInternalServerError, response.InternalError(err.Error()))
+		return
+	}
+
+	c.JSON(http.StatusOK, response.Success(dto.UserResponse{
+		ID:        user.ID,
+		Email:     user.Email,
+		Name:      user.Name,
+		Role:      string(user.Role),
+		CreatedAt: user.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
+	}))
+}
+
 // ValidateToken validates a token (internal endpoint for other services)
 // POST /api/v1/auth/validate
 func (h *AuthHandler) ValidateToken(c *gin.Context) {

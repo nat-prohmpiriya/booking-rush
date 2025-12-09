@@ -561,17 +561,17 @@
 
 ---
 
-### [ ]  P3-06: Auth Service - Profile Endpoints
+### [x]  P3-06: Auth Service - Profile Endpoints
 | Field | Value |
 |-------|-------|
 | **Description** | Implement profile management |
 | **Technical Context** | `apps/auth-service/internal/handler/auth_handler.go` |
 | **Acceptance Criteria** | - `GET /auth/me` returns current user<br>- `PUT /auth/me` updates profile |
 
-- [ ] Implement `GET /auth/me`
-- [ ] Implement `PUT /auth/me`
-- [ ] Validate update fields
-- [ ] Write tests
+- [x] Implement `GET /auth/me`
+- [x] Implement `PUT /auth/me`
+- [x] Validate update fields
+- [x] Write tests
 
 ---
 

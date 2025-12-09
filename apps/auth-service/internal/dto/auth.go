@@ -96,3 +96,22 @@ type UserResponse struct {
 	Role      string `json:"role"`
 	CreatedAt string `json:"created_at"`
 }
+
+// UpdateProfileRequest represents profile update request
+type UpdateProfileRequest struct {
+	Name string `json:"name" binding:"omitempty,min=2,max=100"`
+}
+
+// Validate validates the update profile request
+func (r *UpdateProfileRequest) Validate() (bool, string) {
+	if r.Name == "" {
+		return false, "At least one field must be provided for update"
+	}
+	if len(r.Name) < 2 {
+		return false, "Name must be at least 2 characters"
+	}
+	if len(r.Name) > 100 {
+		return false, "Name must not exceed 100 characters"
+	}
+	return true, ""
+}

@@ -49,6 +49,8 @@ type AuthService interface {
 	ValidateToken(ctx context.Context, token string) (*domain.Claims, error)
 	// GetUser retrieves user by ID
 	GetUser(ctx context.Context, id string) (*domain.User, error)
+	// UpdateProfile updates user profile
+	UpdateProfile(ctx context.Context, userID string, req *dto.UpdateProfileRequest) (*domain.User, error)
 }
 
 // authService implements AuthService
@@ -294,6 +296,28 @@ func (s *authService) ValidateToken(ctx context.Context, tokenString string) (*d
 // GetUser retrieves user by ID
 func (s *authService) GetUser(ctx context.Context, id string) (*domain.User, error) {
 	return s.userRepo.GetByID(ctx, id)
+}
+
+// UpdateProfile updates user profile
+func (s *authService) UpdateProfile(ctx context.Context, userID string, req *dto.UpdateProfileRequest) (*domain.User, error) {
+	user, err := s.userRepo.GetByID(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	if user == nil {
+		return nil, ErrUserNotFound
+	}
+
+	// Update fields
+	if req.Name != "" {
+		user.Name = req.Name
+	}
+
+	if err := s.userRepo.Update(ctx, user); err != nil {
+		return nil, err
+	}
+
+	return user, nil
 }
 
 // generateTokenPair generates access and refresh tokens

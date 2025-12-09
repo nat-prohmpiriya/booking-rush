@@ -908,3 +908,129 @@ func TestBcryptCost(t *testing.T) {
 		t.Errorf("bcrypt cost = %d, want 12", cost)
 	}
 }
+
+func TestAuthService_GetUser(t *testing.T) {
+	userRepo := newMockUserRepository()
+	sessionRepo := newMockSessionRepository()
+	config := &AuthServiceConfig{
+		JWTSecret:          "test-secret-key",
+		AccessTokenExpiry:  15 * time.Minute,
+		RefreshTokenExpiry: 7 * 24 * time.Hour,
+		BcryptCost:         10,
+	}
+	svc := NewAuthService(userRepo, sessionRepo, config)
+
+	// Create user
+	hashedPassword, _ := bcrypt.GenerateFromPassword([]byte("Password1!"), 10)
+	testUser := &domain.User{
+		ID:           "getuser-test-id",
+		Email:        "getuser@example.com",
+		PasswordHash: string(hashedPassword),
+		Name:         "GetUser Test",
+		Role:         domain.RoleUser,
+		IsActive:     true,
+		CreatedAt:    time.Now(),
+		UpdatedAt:    time.Now(),
+	}
+	userRepo.users[testUser.ID] = testUser
+	userRepo.emailIndex[testUser.Email] = testUser
+
+	t.Run("get existing user", func(t *testing.T) {
+		user, err := svc.GetUser(context.Background(), testUser.ID)
+		if err != nil {
+			t.Fatalf("GetUser() error = %v", err)
+		}
+		if user == nil {
+			t.Fatal("GetUser() returned nil user")
+		}
+		if user.ID != testUser.ID {
+			t.Errorf("GetUser() ID = %v, want %v", user.ID, testUser.ID)
+		}
+		if user.Email != testUser.Email {
+			t.Errorf("GetUser() Email = %v, want %v", user.Email, testUser.Email)
+		}
+		if user.Name != testUser.Name {
+			t.Errorf("GetUser() Name = %v, want %v", user.Name, testUser.Name)
+		}
+	})
+
+	t.Run("get non-existent user", func(t *testing.T) {
+		user, err := svc.GetUser(context.Background(), "non-existent-id")
+		if err != nil {
+			t.Fatalf("GetUser() error = %v", err)
+		}
+		if user != nil {
+			t.Error("GetUser() should return nil for non-existent user")
+		}
+	})
+}
+
+func TestAuthService_UpdateProfile(t *testing.T) {
+	userRepo := newMockUserRepository()
+	sessionRepo := newMockSessionRepository()
+	config := &AuthServiceConfig{
+		JWTSecret:          "test-secret-key",
+		AccessTokenExpiry:  15 * time.Minute,
+		RefreshTokenExpiry: 7 * 24 * time.Hour,
+		BcryptCost:         10,
+	}
+	svc := NewAuthService(userRepo, sessionRepo, config)
+
+	// Create user
+	hashedPassword, _ := bcrypt.GenerateFromPassword([]byte("Password1!"), 10)
+	testUser := &domain.User{
+		ID:           "updateprofile-test-id",
+		Email:        "updateprofile@example.com",
+		PasswordHash: string(hashedPassword),
+		Name:         "Original Name",
+		Role:         domain.RoleUser,
+		IsActive:     true,
+		CreatedAt:    time.Now(),
+		UpdatedAt:    time.Now(),
+	}
+	userRepo.users[testUser.ID] = testUser
+	userRepo.emailIndex[testUser.Email] = testUser
+
+	t.Run("update name successfully", func(t *testing.T) {
+		req := &dto.UpdateProfileRequest{
+			Name: "Updated Name",
+		}
+		user, err := svc.UpdateProfile(context.Background(), testUser.ID, req)
+		if err != nil {
+			t.Fatalf("UpdateProfile() error = %v", err)
+		}
+		if user.Name != "Updated Name" {
+			t.Errorf("UpdateProfile() Name = %v, want 'Updated Name'", user.Name)
+		}
+		// Verify the change persisted in repository
+		if userRepo.users[testUser.ID].Name != "Updated Name" {
+			t.Error("UpdateProfile() did not persist name change")
+		}
+	})
+
+	t.Run("update non-existent user", func(t *testing.T) {
+		req := &dto.UpdateProfileRequest{
+			Name: "New Name",
+		}
+		_, err := svc.UpdateProfile(context.Background(), "non-existent-id", req)
+		if err != ErrUserNotFound {
+			t.Errorf("UpdateProfile() error = %v, want %v", err, ErrUserNotFound)
+		}
+	})
+
+	t.Run("empty name does not change existing name", func(t *testing.T) {
+		// Reset user name
+		userRepo.users[testUser.ID].Name = "Keep This Name"
+
+		req := &dto.UpdateProfileRequest{
+			Name: "",
+		}
+		user, err := svc.UpdateProfile(context.Background(), testUser.ID, req)
+		if err != nil {
+			t.Fatalf("UpdateProfile() error = %v", err)
+		}
+		if user.Name != "Keep This Name" {
+			t.Errorf("UpdateProfile() should not change name when empty, got %v", user.Name)
+		}
+	})
+}
