@@ -2,18 +2,18 @@ package repository
 
 import (
 	"context"
-	"database/sql"
+	"fmt"
 	"os"
 	"testing"
 	"time"
 
 	"github.com/google/uuid"
-	_ "github.com/lib/pq"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/prohmpiriya/booking-rush-10k-rps/apps/booking-service/internal/domain"
 )
 
-// getPostgresDB creates a PostgreSQL connection for testing
-func getPostgresDB(t *testing.T) *sql.DB {
+// getPostgresPool creates a PostgreSQL connection pool for testing
+func getPostgresPool(t *testing.T) *pgxpool.Pool {
 	skipIfNoIntegration(t)
 
 	host := os.Getenv("TEST_POSTGRES_HOST")
@@ -41,24 +41,27 @@ func getPostgresDB(t *testing.T) *sql.DB {
 		dbname = "booking_rush_test"
 	}
 
-	connStr := "host=" + host + " port=" + port + " user=" + user + " password=" + password + " dbname=" + dbname + " sslmode=disable"
+	connStr := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable",
+		user, password, host, port, dbname)
 
-	db, err := sql.Open("postgres", connStr)
+	ctx := context.Background()
+	pool, err := pgxpool.New(ctx, connStr)
 	if err != nil {
-		t.Fatalf("Failed to open PostgreSQL connection: %v", err)
+		t.Fatalf("Failed to create PostgreSQL pool: %v", err)
 	}
 
-	if err := db.Ping(); err != nil {
+	if err := pool.Ping(ctx); err != nil {
 		t.Fatalf("Failed to ping PostgreSQL: %v", err)
 	}
 
 	// Clean up test data
-	cleanupTestData(t, db)
+	cleanupTestData(t, pool)
 
-	return db
+	return pool
 }
 
-func cleanupTestData(t *testing.T, db *sql.DB) {
+func cleanupTestData(t *testing.T, pool *pgxpool.Pool) {
+	ctx := context.Background()
 	// Clean up in reverse order of dependencies
 	tables := []string{
 		"bookings",
@@ -66,7 +69,7 @@ func cleanupTestData(t *testing.T, db *sql.DB) {
 	}
 
 	for _, table := range tables {
-		_, err := db.Exec("DELETE FROM " + table + " WHERE id::text LIKE 'test-%' OR id::text LIKE '%test%'")
+		_, err := pool.Exec(ctx, "DELETE FROM "+table+" WHERE id::text LIKE 'test-%' OR id::text LIKE '%test%'")
 		if err != nil {
 			t.Logf("Warning: failed to clean up %s: %v", table, err)
 		}
@@ -97,10 +100,10 @@ func createTestBooking(tenantID, userID, eventID, showID, zoneID string) *domain
 func TestPostgresBookingRepository_Create(t *testing.T) {
 	skipIfNoIntegration(t)
 
-	db := getPostgresDB(t)
-	defer db.Close()
+	pool := getPostgresPool(t)
+	defer pool.Close()
 
-	repo := NewPostgresBookingRepository(db)
+	repo := NewPostgresBookingRepository(pool)
 	ctx := context.Background()
 
 	// Note: You'll need valid tenant_id, user_id, event_id, show_id, zone_id
@@ -146,10 +149,10 @@ func TestPostgresBookingRepository_Create(t *testing.T) {
 func TestPostgresBookingRepository_GetByID_NotFound(t *testing.T) {
 	skipIfNoIntegration(t)
 
-	db := getPostgresDB(t)
-	defer db.Close()
+	pool := getPostgresPool(t)
+	defer pool.Close()
 
-	repo := NewPostgresBookingRepository(db)
+	repo := NewPostgresBookingRepository(pool)
 	ctx := context.Background()
 
 	_, err := repo.GetByID(ctx, uuid.New().String())
@@ -161,10 +164,10 @@ func TestPostgresBookingRepository_GetByID_NotFound(t *testing.T) {
 func TestPostgresBookingRepository_UpdateStatus(t *testing.T) {
 	skipIfNoIntegration(t)
 
-	db := getPostgresDB(t)
-	defer db.Close()
+	pool := getPostgresPool(t)
+	defer pool.Close()
 
-	repo := NewPostgresBookingRepository(db)
+	repo := NewPostgresBookingRepository(pool)
 	ctx := context.Background()
 
 	// Skip if no test data
@@ -191,10 +194,10 @@ func TestPostgresBookingRepository_UpdateStatus(t *testing.T) {
 func TestPostgresBookingRepository_Delete_NotFound(t *testing.T) {
 	skipIfNoIntegration(t)
 
-	db := getPostgresDB(t)
-	defer db.Close()
+	pool := getPostgresPool(t)
+	defer pool.Close()
 
-	repo := NewPostgresBookingRepository(db)
+	repo := NewPostgresBookingRepository(pool)
 	ctx := context.Background()
 
 	err := repo.Delete(ctx, uuid.New().String())
@@ -206,10 +209,10 @@ func TestPostgresBookingRepository_Delete_NotFound(t *testing.T) {
 func TestPostgresBookingRepository_Confirm(t *testing.T) {
 	skipIfNoIntegration(t)
 
-	db := getPostgresDB(t)
-	defer db.Close()
+	pool := getPostgresPool(t)
+	defer pool.Close()
 
-	repo := NewPostgresBookingRepository(db)
+	repo := NewPostgresBookingRepository(pool)
 	ctx := context.Background()
 
 	t.Skip("Skipping: requires existing booking record")
@@ -244,10 +247,10 @@ func TestPostgresBookingRepository_Confirm(t *testing.T) {
 func TestPostgresBookingRepository_Cancel(t *testing.T) {
 	skipIfNoIntegration(t)
 
-	db := getPostgresDB(t)
-	defer db.Close()
+	pool := getPostgresPool(t)
+	defer pool.Close()
 
-	repo := NewPostgresBookingRepository(db)
+	repo := NewPostgresBookingRepository(pool)
 	ctx := context.Background()
 
 	t.Skip("Skipping: requires existing booking record")
@@ -277,10 +280,10 @@ func TestPostgresBookingRepository_Cancel(t *testing.T) {
 func TestPostgresBookingRepository_GetByUserID(t *testing.T) {
 	skipIfNoIntegration(t)
 
-	db := getPostgresDB(t)
-	defer db.Close()
+	pool := getPostgresPool(t)
+	defer pool.Close()
 
-	repo := NewPostgresBookingRepository(db)
+	repo := NewPostgresBookingRepository(pool)
 	ctx := context.Background()
 
 	// This test checks that the query works, even if it returns empty
@@ -300,10 +303,10 @@ func TestPostgresBookingRepository_GetByUserID(t *testing.T) {
 func TestPostgresBookingRepository_CountByUserAndEvent(t *testing.T) {
 	skipIfNoIntegration(t)
 
-	db := getPostgresDB(t)
-	defer db.Close()
+	pool := getPostgresPool(t)
+	defer pool.Close()
 
-	repo := NewPostgresBookingRepository(db)
+	repo := NewPostgresBookingRepository(pool)
 	ctx := context.Background()
 
 	// Test with random UUIDs - should return 0
@@ -320,10 +323,10 @@ func TestPostgresBookingRepository_CountByUserAndEvent(t *testing.T) {
 func TestPostgresBookingRepository_GetExpiredReservations(t *testing.T) {
 	skipIfNoIntegration(t)
 
-	db := getPostgresDB(t)
-	defer db.Close()
+	pool := getPostgresPool(t)
+	defer pool.Close()
 
-	repo := NewPostgresBookingRepository(db)
+	repo := NewPostgresBookingRepository(pool)
 	ctx := context.Background()
 
 	// Test the query works
@@ -339,10 +342,10 @@ func TestPostgresBookingRepository_GetExpiredReservations(t *testing.T) {
 func TestPostgresBookingRepository_MarkAsExpired(t *testing.T) {
 	skipIfNoIntegration(t)
 
-	db := getPostgresDB(t)
-	defer db.Close()
+	pool := getPostgresPool(t)
+	defer pool.Close()
 
-	repo := NewPostgresBookingRepository(db)
+	repo := NewPostgresBookingRepository(pool)
 	ctx := context.Background()
 
 	// Test with non-existent ID

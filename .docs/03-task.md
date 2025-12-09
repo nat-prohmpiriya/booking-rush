@@ -383,33 +383,33 @@
 
 ---
 
-### [ ]  P2-10: Inventory Sync Worker
+### [x]  P2-10: Inventory Sync Worker
 | Field | Value |
 |-------|-------|
 | **Description** | สร้าง worker สำหรับ sync Redis → PostgreSQL |
 | **Technical Context** | `apps/booking-service/cmd/inventory-worker/` |
 | **Acceptance Criteria** | - Consume booking events from Kafka<br>- Batch update PostgreSQL every 5 seconds<br>- Handle Redis rebuild on startup |
 
-- [ ] Create Kafka consumer
-- [ ] Implement batch aggregation (5 sec window)
-- [ ] Implement PostgreSQL batch update
-- [ ] Add startup Redis rebuild from DB
-- [ ] Write tests
+- [x] Create Kafka consumer
+- [x] Implement batch aggregation (5 sec window)
+- [x] Implement PostgreSQL batch update
+- [x] Add startup Redis rebuild from DB
+- [x] Write tests
 
 ---
 
-### [ ]  P2-11: Load Testing Setup
+### [x]  P2-11: Load Testing Setup
 | Field | Value |
 |-------|-------|
 | **Description** | Setup k6 สำหรับ load testing |
 | **Technical Context** | `tests/load/booking_reserve.js` |
 | **Acceptance Criteria** | - k6 script for `/bookings/reserve`<br>- Test scenarios defined<br>- Can run 10k RPS test |
 
-- [ ] Install and configure k6
-- [ ] Create test script for reserve endpoint
-- [ ] Define test scenarios (ramp-up, sustained, spike)
-- [ ] Create test data seeding script
-- [ ] Document how to run tests
+- [x] Install and configure k6
+- [x] Create test script for reserve endpoint
+- [x] Define test scenarios (ramp-up, sustained, spike)
+- [x] Create test data seeding script
+- [x] Document how to run tests
 
 ---
 

@@ -2,22 +2,23 @@ package repository
 
 import (
 	"context"
-	"database/sql"
 	"errors"
 	"fmt"
 	"time"
 
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/prohmpiriya/booking-rush-10k-rps/apps/booking-service/internal/domain"
 )
 
-// PostgresBookingRepository implements BookingRepository using PostgreSQL
+// PostgresBookingRepository implements BookingRepository using PostgreSQL with pgxpool
 type PostgresBookingRepository struct {
-	db *sql.DB
+	pool *pgxpool.Pool
 }
 
 // NewPostgresBookingRepository creates a new PostgresBookingRepository
-func NewPostgresBookingRepository(db *sql.DB) *PostgresBookingRepository {
-	return &PostgresBookingRepository{db: db}
+func NewPostgresBookingRepository(pool *pgxpool.Pool) *PostgresBookingRepository {
+	return &PostgresBookingRepository{pool: pool}
 }
 
 // Create creates a new booking record in the database
@@ -26,26 +27,27 @@ func (r *PostgresBookingRepository) Create(ctx context.Context, booking *domain.
 		INSERT INTO bookings (
 			id, tenant_id, user_id, event_id, show_id, zone_id,
 			quantity, unit_price, total_amount, currency, status,
-			reserved_at, reservation_expires_at, created_at, updated_at
+			idempotency_key, reserved_at, reservation_expires_at, created_at, updated_at
 		) VALUES (
 			$1, $2, $3, $4, $5, $6,
 			$7, $8, $9, $10, $11,
-			$12, $13, $14, $15
+			$12, $13, $14, $15, $16
 		)
 	`
 
-	_, err := r.db.ExecContext(ctx, query,
+	_, err := r.pool.Exec(ctx, query,
 		booking.ID,
-		booking.TenantID,
+		nullString(booking.TenantID),
 		booking.UserID,
 		booking.EventID,
-		booking.ShowID,
+		nullString(booking.ShowID),
 		booking.ZoneID,
 		booking.Quantity,
 		booking.UnitPrice,
 		booking.TotalPrice,
 		booking.Currency,
 		booking.Status.String(),
+		nullString(booking.IdempotencyKey),
 		booking.ReservedAt,
 		booking.ExpiresAt,
 		booking.CreatedAt,
@@ -75,21 +77,23 @@ func (r *PostgresBookingRepository) GetByID(ctx context.Context, id string) (*do
 	booking := &domain.Booking{}
 	var (
 		status           string
-		idempotencyKey   sql.NullString
-		reservedAt       sql.NullTime
-		expiresAt        sql.NullTime
-		confirmedAt      sql.NullTime
-		confirmationCode sql.NullString
-		paymentID        sql.NullString
-		cancelledAt      sql.NullTime
+		tenantID         *string
+		showID           *string
+		idempotencyKey   *string
+		reservedAt       *time.Time
+		expiresAt        *time.Time
+		confirmedAt      *time.Time
+		confirmationCode *string
+		paymentID        *string
+		cancelledAt      *time.Time
 	)
 
-	err := r.db.QueryRowContext(ctx, query, id).Scan(
+	err := r.pool.QueryRow(ctx, query, id).Scan(
 		&booking.ID,
-		&booking.TenantID,
+		&tenantID,
 		&booking.UserID,
 		&booking.EventID,
-		&booking.ShowID,
+		&showID,
 		&booking.ZoneID,
 		&booking.Quantity,
 		&booking.UnitPrice,
@@ -108,33 +112,39 @@ func (r *PostgresBookingRepository) GetByID(ctx context.Context, id string) (*do
 	)
 
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, domain.ErrBookingNotFound
 		}
 		return nil, fmt.Errorf("failed to get booking: %w", err)
 	}
 
 	booking.Status = domain.BookingStatus(status)
-	if idempotencyKey.Valid {
-		booking.IdempotencyKey = idempotencyKey.String
+	if tenantID != nil {
+		booking.TenantID = *tenantID
 	}
-	if reservedAt.Valid {
-		booking.ReservedAt = reservedAt.Time
+	if showID != nil {
+		booking.ShowID = *showID
 	}
-	if expiresAt.Valid {
-		booking.ExpiresAt = expiresAt.Time
+	if idempotencyKey != nil {
+		booking.IdempotencyKey = *idempotencyKey
 	}
-	if confirmedAt.Valid {
-		booking.ConfirmedAt = &confirmedAt.Time
+	if reservedAt != nil {
+		booking.ReservedAt = *reservedAt
 	}
-	if confirmationCode.Valid {
-		booking.ConfirmationCode = confirmationCode.String
+	if expiresAt != nil {
+		booking.ExpiresAt = *expiresAt
 	}
-	if paymentID.Valid {
-		booking.PaymentID = paymentID.String
+	if confirmedAt != nil {
+		booking.ConfirmedAt = confirmedAt
 	}
-	if cancelledAt.Valid {
-		booking.CancelledAt = &cancelledAt.Time
+	if confirmationCode != nil {
+		booking.ConfirmationCode = *confirmationCode
+	}
+	if paymentID != nil {
+		booking.PaymentID = *paymentID
+	}
+	if cancelledAt != nil {
+		booking.CancelledAt = cancelledAt
 	}
 
 	return booking, nil
@@ -155,7 +165,7 @@ func (r *PostgresBookingRepository) GetByUserID(ctx context.Context, userID stri
 		LIMIT $2 OFFSET $3
 	`
 
-	rows, err := r.db.QueryContext(ctx, query, userID, limit, offset)
+	rows, err := r.pool.Query(ctx, query, userID, limit, offset)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get bookings by user ID: %w", err)
 	}
@@ -163,68 +173,10 @@ func (r *PostgresBookingRepository) GetByUserID(ctx context.Context, userID stri
 
 	var bookings []*domain.Booking
 	for rows.Next() {
-		booking := &domain.Booking{}
-		var (
-			status           string
-			idempotencyKey   sql.NullString
-			reservedAt       sql.NullTime
-			expiresAt        sql.NullTime
-			confirmedAt      sql.NullTime
-			confirmationCode sql.NullString
-			paymentID        sql.NullString
-			cancelledAt      sql.NullTime
-		)
-
-		err := rows.Scan(
-			&booking.ID,
-			&booking.TenantID,
-			&booking.UserID,
-			&booking.EventID,
-			&booking.ShowID,
-			&booking.ZoneID,
-			&booking.Quantity,
-			&booking.UnitPrice,
-			&booking.TotalPrice,
-			&booking.Currency,
-			&status,
-			&idempotencyKey,
-			&reservedAt,
-			&expiresAt,
-			&confirmedAt,
-			&confirmationCode,
-			&paymentID,
-			&cancelledAt,
-			&booking.CreatedAt,
-			&booking.UpdatedAt,
-		)
-
+		booking, err := scanBooking(rows)
 		if err != nil {
-			return nil, fmt.Errorf("failed to scan booking: %w", err)
+			return nil, err
 		}
-
-		booking.Status = domain.BookingStatus(status)
-		if idempotencyKey.Valid {
-			booking.IdempotencyKey = idempotencyKey.String
-		}
-		if reservedAt.Valid {
-			booking.ReservedAt = reservedAt.Time
-		}
-		if expiresAt.Valid {
-			booking.ExpiresAt = expiresAt.Time
-		}
-		if confirmedAt.Valid {
-			booking.ConfirmedAt = &confirmedAt.Time
-		}
-		if confirmationCode.Valid {
-			booking.ConfirmationCode = confirmationCode.String
-		}
-		if paymentID.Valid {
-			booking.PaymentID = paymentID.String
-		}
-		if cancelledAt.Valid {
-			booking.CancelledAt = &cancelledAt.Time
-		}
-
 		bookings = append(bookings, booking)
 	}
 
@@ -250,7 +202,7 @@ func (r *PostgresBookingRepository) Update(ctx context.Context, booking *domain.
 		WHERE id = $1
 	`
 
-	result, err := r.db.ExecContext(ctx, query,
+	result, err := r.pool.Exec(ctx, query,
 		booking.ID,
 		booking.Quantity,
 		booking.UnitPrice,
@@ -266,12 +218,7 @@ func (r *PostgresBookingRepository) Update(ctx context.Context, booking *domain.
 		return fmt.Errorf("failed to update booking: %w", err)
 	}
 
-	rowsAffected, err := result.RowsAffected()
-	if err != nil {
-		return fmt.Errorf("failed to get rows affected: %w", err)
-	}
-
-	if rowsAffected == 0 {
+	if result.RowsAffected() == 0 {
 		return domain.ErrBookingNotFound
 	}
 
@@ -287,17 +234,12 @@ func (r *PostgresBookingRepository) UpdateStatus(ctx context.Context, id string,
 		WHERE id = $1
 	`
 
-	result, err := r.db.ExecContext(ctx, query, id, status.String(), time.Now())
+	result, err := r.pool.Exec(ctx, query, id, status.String(), time.Now())
 	if err != nil {
 		return fmt.Errorf("failed to update booking status: %w", err)
 	}
 
-	rowsAffected, err := result.RowsAffected()
-	if err != nil {
-		return fmt.Errorf("failed to get rows affected: %w", err)
-	}
-
-	if rowsAffected == 0 {
+	if result.RowsAffected() == 0 {
 		return domain.ErrBookingNotFound
 	}
 
@@ -308,17 +250,12 @@ func (r *PostgresBookingRepository) UpdateStatus(ctx context.Context, id string,
 func (r *PostgresBookingRepository) Delete(ctx context.Context, id string) error {
 	query := `DELETE FROM bookings WHERE id = $1`
 
-	result, err := r.db.ExecContext(ctx, query, id)
+	result, err := r.pool.Exec(ctx, query, id)
 	if err != nil {
 		return fmt.Errorf("failed to delete booking: %w", err)
 	}
 
-	rowsAffected, err := result.RowsAffected()
-	if err != nil {
-		return fmt.Errorf("failed to get rows affected: %w", err)
-	}
-
-	if rowsAffected == 0 {
+	if result.RowsAffected() == 0 {
 		return domain.ErrBookingNotFound
 	}
 
@@ -337,20 +274,15 @@ func (r *PostgresBookingRepository) Confirm(ctx context.Context, id, paymentID s
 	`
 
 	now := time.Now()
-	result, err := r.db.ExecContext(ctx, query, id, domain.BookingStatusConfirmed.String(), paymentID, now, now)
+	result, err := r.pool.Exec(ctx, query, id, domain.BookingStatusConfirmed.String(), paymentID, now, now)
 	if err != nil {
 		return fmt.Errorf("failed to confirm booking: %w", err)
 	}
 
-	rowsAffected, err := result.RowsAffected()
-	if err != nil {
-		return fmt.Errorf("failed to get rows affected: %w", err)
-	}
-
-	if rowsAffected == 0 {
+	if result.RowsAffected() == 0 {
 		// Check if booking exists
 		var exists bool
-		err := r.db.QueryRowContext(ctx, "SELECT EXISTS(SELECT 1 FROM bookings WHERE id = $1)", id).Scan(&exists)
+		err := r.pool.QueryRow(ctx, "SELECT EXISTS(SELECT 1 FROM bookings WHERE id = $1)", id).Scan(&exists)
 		if err != nil {
 			return fmt.Errorf("failed to check booking existence: %w", err)
 		}
@@ -374,22 +306,17 @@ func (r *PostgresBookingRepository) Cancel(ctx context.Context, id string) error
 	`
 
 	now := time.Now()
-	result, err := r.db.ExecContext(ctx, query, id, domain.BookingStatusCancelled.String(), now, now)
+	result, err := r.pool.Exec(ctx, query, id, domain.BookingStatusCancelled.String(), now, now)
 	if err != nil {
 		return fmt.Errorf("failed to cancel booking: %w", err)
 	}
 
-	rowsAffected, err := result.RowsAffected()
-	if err != nil {
-		return fmt.Errorf("failed to get rows affected: %w", err)
-	}
-
-	if rowsAffected == 0 {
+	if result.RowsAffected() == 0 {
 		// Check if booking exists and its status
 		var status string
-		err := r.db.QueryRowContext(ctx, "SELECT status FROM bookings WHERE id = $1", id).Scan(&status)
+		err := r.pool.QueryRow(ctx, "SELECT status FROM bookings WHERE id = $1", id).Scan(&status)
 		if err != nil {
-			if errors.Is(err, sql.ErrNoRows) {
+			if errors.Is(err, pgx.ErrNoRows) {
 				return domain.ErrBookingNotFound
 			}
 			return fmt.Errorf("failed to check booking status: %w", err)
@@ -412,7 +339,9 @@ func (r *PostgresBookingRepository) GetExpiredReservations(ctx context.Context, 
 		SELECT
 			id, tenant_id, user_id, event_id, show_id, zone_id,
 			quantity, unit_price, total_amount, currency, status,
-			reserved_at, reservation_expires_at, created_at, updated_at
+			idempotency_key, reserved_at, reservation_expires_at,
+			confirmed_at, confirmation_code, payment_id,
+			cancelled_at, created_at, updated_at
 		FROM bookings
 		WHERE status = 'reserved'
 			AND reservation_expires_at IS NOT NULL
@@ -420,7 +349,7 @@ func (r *PostgresBookingRepository) GetExpiredReservations(ctx context.Context, 
 		LIMIT $2
 	`
 
-	rows, err := r.db.QueryContext(ctx, query, time.Now(), limit)
+	rows, err := r.pool.Query(ctx, query, time.Now(), limit)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get expired reservations: %w", err)
 	}
@@ -428,43 +357,10 @@ func (r *PostgresBookingRepository) GetExpiredReservations(ctx context.Context, 
 
 	var bookings []*domain.Booking
 	for rows.Next() {
-		booking := &domain.Booking{}
-		var (
-			status     string
-			reservedAt sql.NullTime
-			expiresAt  sql.NullTime
-		)
-
-		err := rows.Scan(
-			&booking.ID,
-			&booking.TenantID,
-			&booking.UserID,
-			&booking.EventID,
-			&booking.ShowID,
-			&booking.ZoneID,
-			&booking.Quantity,
-			&booking.UnitPrice,
-			&booking.TotalPrice,
-			&booking.Currency,
-			&status,
-			&reservedAt,
-			&expiresAt,
-			&booking.CreatedAt,
-			&booking.UpdatedAt,
-		)
-
+		booking, err := scanBooking(rows)
 		if err != nil {
-			return nil, fmt.Errorf("failed to scan booking: %w", err)
+			return nil, err
 		}
-
-		booking.Status = domain.BookingStatus(status)
-		if reservedAt.Valid {
-			booking.ReservedAt = reservedAt.Time
-		}
-		if expiresAt.Valid {
-			booking.ExpiresAt = expiresAt.Time
-		}
-
 		bookings = append(bookings, booking)
 	}
 
@@ -485,7 +381,7 @@ func (r *PostgresBookingRepository) MarkAsExpired(ctx context.Context, id string
 		WHERE id = $1 AND status = 'reserved'
 	`
 
-	result, err := r.db.ExecContext(ctx, query,
+	result, err := r.pool.Exec(ctx, query,
 		id,
 		domain.BookingStatusExpired.String(),
 		"Reservation TTL expired",
@@ -495,12 +391,7 @@ func (r *PostgresBookingRepository) MarkAsExpired(ctx context.Context, id string
 		return fmt.Errorf("failed to mark booking as expired: %w", err)
 	}
 
-	rowsAffected, err := result.RowsAffected()
-	if err != nil {
-		return fmt.Errorf("failed to get rows affected: %w", err)
-	}
-
-	if rowsAffected == 0 {
+	if result.RowsAffected() == 0 {
 		return domain.ErrBookingNotFound
 	}
 
@@ -523,21 +414,23 @@ func (r *PostgresBookingRepository) GetByIdempotencyKey(ctx context.Context, key
 	booking := &domain.Booking{}
 	var (
 		status           string
-		idempotencyKey   sql.NullString
-		reservedAt       sql.NullTime
-		expiresAt        sql.NullTime
-		confirmedAt      sql.NullTime
-		confirmationCode sql.NullString
-		paymentID        sql.NullString
-		cancelledAt      sql.NullTime
+		tenantID         *string
+		showID           *string
+		idempotencyKey   *string
+		reservedAt       *time.Time
+		expiresAt        *time.Time
+		confirmedAt      *time.Time
+		confirmationCode *string
+		paymentID        *string
+		cancelledAt      *time.Time
 	)
 
-	err := r.db.QueryRowContext(ctx, query, key).Scan(
+	err := r.pool.QueryRow(ctx, query, key).Scan(
 		&booking.ID,
-		&booking.TenantID,
+		&tenantID,
 		&booking.UserID,
 		&booking.EventID,
-		&booking.ShowID,
+		&showID,
 		&booking.ZoneID,
 		&booking.Quantity,
 		&booking.UnitPrice,
@@ -556,33 +449,39 @@ func (r *PostgresBookingRepository) GetByIdempotencyKey(ctx context.Context, key
 	)
 
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, nil // Not found, but not an error
 		}
 		return nil, fmt.Errorf("failed to get booking by idempotency key: %w", err)
 	}
 
 	booking.Status = domain.BookingStatus(status)
-	if idempotencyKey.Valid {
-		booking.IdempotencyKey = idempotencyKey.String
+	if tenantID != nil {
+		booking.TenantID = *tenantID
 	}
-	if reservedAt.Valid {
-		booking.ReservedAt = reservedAt.Time
+	if showID != nil {
+		booking.ShowID = *showID
 	}
-	if expiresAt.Valid {
-		booking.ExpiresAt = expiresAt.Time
+	if idempotencyKey != nil {
+		booking.IdempotencyKey = *idempotencyKey
 	}
-	if confirmedAt.Valid {
-		booking.ConfirmedAt = &confirmedAt.Time
+	if reservedAt != nil {
+		booking.ReservedAt = *reservedAt
 	}
-	if confirmationCode.Valid {
-		booking.ConfirmationCode = confirmationCode.String
+	if expiresAt != nil {
+		booking.ExpiresAt = *expiresAt
 	}
-	if paymentID.Valid {
-		booking.PaymentID = paymentID.String
+	if confirmedAt != nil {
+		booking.ConfirmedAt = confirmedAt
 	}
-	if cancelledAt.Valid {
-		booking.CancelledAt = &cancelledAt.Time
+	if confirmationCode != nil {
+		booking.ConfirmationCode = *confirmationCode
+	}
+	if paymentID != nil {
+		booking.PaymentID = *paymentID
+	}
+	if cancelledAt != nil {
+		booking.CancelledAt = cancelledAt
 	}
 
 	return booking, nil
@@ -596,7 +495,7 @@ func (r *PostgresBookingRepository) CountByUserAndEvent(ctx context.Context, use
 	`
 
 	var count int
-	err := r.db.QueryRowContext(ctx, query, userID, eventID).Scan(&count)
+	err := r.pool.QueryRow(ctx, query, userID, eventID).Scan(&count)
 	if err != nil {
 		return 0, fmt.Errorf("failed to count bookings: %w", err)
 	}
@@ -604,12 +503,87 @@ func (r *PostgresBookingRepository) CountByUserAndEvent(ctx context.Context, use
 	return count, nil
 }
 
-// Helper function to convert empty string to sql.NullString
-func nullString(s string) sql.NullString {
-	if s == "" {
-		return sql.NullString{}
+// scanBooking scans a row into a Booking struct
+func scanBooking(rows pgx.Rows) (*domain.Booking, error) {
+	booking := &domain.Booking{}
+	var (
+		status           string
+		tenantID         *string
+		showID           *string
+		idempotencyKey   *string
+		reservedAt       *time.Time
+		expiresAt        *time.Time
+		confirmedAt      *time.Time
+		confirmationCode *string
+		paymentID        *string
+		cancelledAt      *time.Time
+	)
+
+	err := rows.Scan(
+		&booking.ID,
+		&tenantID,
+		&booking.UserID,
+		&booking.EventID,
+		&showID,
+		&booking.ZoneID,
+		&booking.Quantity,
+		&booking.UnitPrice,
+		&booking.TotalPrice,
+		&booking.Currency,
+		&status,
+		&idempotencyKey,
+		&reservedAt,
+		&expiresAt,
+		&confirmedAt,
+		&confirmationCode,
+		&paymentID,
+		&cancelledAt,
+		&booking.CreatedAt,
+		&booking.UpdatedAt,
+	)
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to scan booking: %w", err)
 	}
-	return sql.NullString{String: s, Valid: true}
+
+	booking.Status = domain.BookingStatus(status)
+	if tenantID != nil {
+		booking.TenantID = *tenantID
+	}
+	if showID != nil {
+		booking.ShowID = *showID
+	}
+	if idempotencyKey != nil {
+		booking.IdempotencyKey = *idempotencyKey
+	}
+	if reservedAt != nil {
+		booking.ReservedAt = *reservedAt
+	}
+	if expiresAt != nil {
+		booking.ExpiresAt = *expiresAt
+	}
+	if confirmedAt != nil {
+		booking.ConfirmedAt = confirmedAt
+	}
+	if confirmationCode != nil {
+		booking.ConfirmationCode = *confirmationCode
+	}
+	if paymentID != nil {
+		booking.PaymentID = *paymentID
+	}
+	if cancelledAt != nil {
+		booking.CancelledAt = cancelledAt
+	}
+
+	return booking, nil
+}
+
+// Helper function to convert empty string to nil pointer
+func nullString(s string) *string {
+	if s == "" {
+		return nil
+	}
+	return &s
 }
 
 // Ensure PostgresBookingRepository implements BookingRepository

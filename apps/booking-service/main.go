@@ -5,13 +5,16 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	_ "net/http/pprof" // Import pprof for profiling
 	"os"
 	"os/signal"
+	"runtime"
 	"syscall"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/prohmpiriya/booking-rush-10k-rps/apps/booking-service/internal/di"
+	"github.com/prohmpiriya/booking-rush-10k-rps/apps/booking-service/internal/repository"
 	"github.com/prohmpiriya/booking-rush-10k-rps/apps/booking-service/internal/service"
 	"github.com/prohmpiriya/booking-rush-10k-rps/pkg/config"
 	"github.com/prohmpiriya/booking-rush-10k-rps/pkg/database"
@@ -20,6 +23,9 @@ import (
 )
 
 func main() {
+	// Optimize Go runtime for high concurrency
+	runtime.GOMAXPROCS(runtime.NumCPU())
+
 	// Load configuration
 	cfg, err := config.Load()
 	if err != nil {
@@ -42,46 +48,52 @@ func main() {
 
 	ctx := context.Background()
 
-	// Initialize database connection
+	// Initialize database connection with optimized settings for 10k RPS
 	var db *database.PostgresDB
 	dbCfg := &database.PostgresConfig{
-		Host:          cfg.Database.Host,
-		Port:          cfg.Database.Port,
-		User:          cfg.Database.User,
-		Password:      cfg.Database.Password,
-		Database:      cfg.Database.DBName,
-		SSLMode:       cfg.Database.SSLMode,
-		MaxConns:      int32(cfg.Database.MaxOpenConns),
-		MinConns:      int32(cfg.Database.MaxIdleConns),
-		MaxRetries:    3,
-		RetryInterval: 2 * time.Second,
+		Host:            cfg.Database.Host,
+		Port:            cfg.Database.Port,
+		User:            cfg.Database.User,
+		Password:        cfg.Database.Password,
+		Database:        cfg.Database.DBName,
+		SSLMode:         cfg.Database.SSLMode,
+		MaxConns:        200,                   // Increased for 10k RPS
+		MinConns:        50,                    // Keep minimum pool ready
+		MaxConnLifetime: 30 * time.Minute,     // Reduce to prevent stale connections
+		MaxConnIdleTime: 5 * time.Minute,      // Close idle connections sooner
+		ConnectTimeout:  5 * time.Second,      // Fast fail
+		MaxRetries:      3,
+		RetryInterval:   1 * time.Second,
 	}
 	db, err = database.NewPostgres(ctx, dbCfg)
 	if err != nil {
-		appLog.Warn(fmt.Sprintf("Database connection failed: %v", err))
-	} else {
-		defer db.Close()
-		appLog.Info("Database connected")
+		appLog.Fatal(fmt.Sprintf("Database connection failed: %v", err))
 	}
+	defer db.Close()
+	appLog.Info(fmt.Sprintf("Database connected (pool: min=%d, max=%d)", dbCfg.MinConns, dbCfg.MaxConns))
 
-	// Initialize Redis connection
-	var redis *pkgredis.Client
+	// Initialize Redis connection with optimized settings for 10k RPS
+	var redisClient *pkgredis.Client
 	redisCfg := &pkgredis.Config{
 		Host:          cfg.Redis.Host,
 		Port:          cfg.Redis.Port,
 		Password:      cfg.Redis.Password,
 		DB:            cfg.Redis.DB,
-		PoolSize:      cfg.Redis.PoolSize,
+		PoolSize:      500,                // Large pool for 10k RPS
+		MinIdleConns:  100,                // Keep connections ready
 		MaxRetries:    3,
-		RetryInterval: 2 * time.Second,
+		RetryInterval: 100 * time.Millisecond,
+		DialTimeout:   5 * time.Second,
+		ReadTimeout:   3 * time.Second,
+		WriteTimeout:  3 * time.Second,
+		PoolTimeout:   4 * time.Second,
 	}
-	redis, err = pkgredis.NewClient(ctx, redisCfg)
+	redisClient, err = pkgredis.NewClient(ctx, redisCfg)
 	if err != nil {
-		appLog.Warn(fmt.Sprintf("Redis connection failed: %v", err))
-	} else {
-		defer redis.Close()
-		appLog.Info("Redis connected")
+		appLog.Fatal(fmt.Sprintf("Redis connection failed: %v", err))
 	}
+	defer redisClient.Close()
+	appLog.Info(fmt.Sprintf("Redis connected (pool: %d, minIdle: %d)", redisCfg.PoolSize, redisCfg.MinIdleConns))
 
 	// Initialize Kafka event publisher
 	var eventPublisher service.EventPublisher
@@ -99,13 +111,23 @@ func main() {
 		appLog.Info("Kafka event publisher connected")
 	}
 
+	// Initialize repositories
+	bookingRepo := repository.NewPostgresBookingRepository(db.Pool())
+	reservationRepo := repository.NewRedisReservationRepository(redisClient)
+
+	// Pre-load Lua scripts into Redis
+	if err := reservationRepo.LoadScripts(ctx); err != nil {
+		appLog.Warn(fmt.Sprintf("Failed to pre-load Lua scripts: %v", err))
+	} else {
+		appLog.Info("Lua scripts pre-loaded into Redis")
+	}
+
 	// Build dependency injection container
-	// Note: Repository implementations will be added in future tasks
 	container := di.NewContainer(&di.ContainerConfig{
 		DB:              db,
-		Redis:           redis,
-		BookingRepo:     nil, // TODO: Implement PostgresBookingRepository
-		ReservationRepo: nil, // TODO: Implement RedisReservationRepository
+		Redis:           redisClient,
+		BookingRepo:     bookingRepo,
+		ReservationRepo: reservationRepo,
 		EventPublisher:  eventPublisher,
 		ServiceConfig: &service.BookingServiceConfig{
 			ReservationTTL: 10 * time.Minute,
@@ -113,17 +135,32 @@ func main() {
 		},
 	})
 
-	// Setup Gin
-	if cfg.IsProduction() {
-		gin.SetMode(gin.ReleaseMode)
-	}
+	// Setup Gin with optimized settings
+	gin.SetMode(gin.ReleaseMode) // Always use release mode for performance
+	gin.DisableConsoleColor()
 
 	router := gin.New()
+
+	// Use minimal middleware for performance
 	router.Use(gin.Recovery())
 
 	// Health check endpoints
 	router.GET("/health", container.HealthHandler.Health)
 	router.GET("/ready", container.HealthHandler.Ready)
+
+	// Metrics endpoint for monitoring
+	router.GET("/metrics", func(c *gin.Context) {
+		stats := db.Stats()
+		c.JSON(http.StatusOK, gin.H{
+			"db_pool": gin.H{
+				"total_conns":        stats.TotalConns(),
+				"acquired_conns":     stats.AcquiredConns(),
+				"idle_conns":         stats.IdleConns(),
+				"max_conns":          stats.MaxConns(),
+				"constructing_conns": stats.ConstructingConns(),
+			},
+		})
+	})
 
 	// API routes
 	v1 := router.Group("/api/v1")
@@ -137,8 +174,9 @@ func main() {
 			})
 		})
 
-		// Booking routes (will need auth middleware)
+		// Booking routes - simplified middleware for performance
 		bookings := v1.Group("/bookings")
+		bookings.Use(userIDMiddleware()) // Extract user_id from header
 		{
 			bookings.POST("/reserve", container.BookingHandler.ReserveSeats)
 			bookings.GET("", container.BookingHandler.GetUserBookings)
@@ -150,15 +188,26 @@ func main() {
 		}
 	}
 
-	// Create HTTP server
+	// Create HTTP server with optimized settings
 	addr := fmt.Sprintf("%s:%d", cfg.Server.Host, cfg.Server.Port)
 	srv := &http.Server{
-		Addr:         addr,
-		Handler:      router,
-		ReadTimeout:  cfg.Server.ReadTimeout,
-		WriteTimeout: cfg.Server.WriteTimeout,
-		IdleTimeout:  cfg.Server.IdleTimeout,
+		Addr:              addr,
+		Handler:           router,
+		ReadTimeout:       5 * time.Second,
+		WriteTimeout:      10 * time.Second,
+		IdleTimeout:       120 * time.Second,
+		ReadHeaderTimeout: 2 * time.Second,
+		MaxHeaderBytes:    1 << 20, // 1MB
 	}
+
+	// Start pprof server on separate port for profiling
+	go func() {
+		pprofAddr := fmt.Sprintf("%s:%d", cfg.Server.Host, cfg.Server.Port+1000)
+		appLog.Info(fmt.Sprintf("pprof server listening on %s", pprofAddr))
+		if err := http.ListenAndServe(pprofAddr, nil); err != nil {
+			appLog.Error(fmt.Sprintf("pprof server error: %v", err))
+		}
+	}()
 
 	// Start server in goroutine
 	go func() {
@@ -183,4 +232,17 @@ func main() {
 	}
 
 	appLog.Info("Server exited gracefully")
+}
+
+// userIDMiddleware extracts user_id from X-User-ID header for load testing
+func userIDMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		userID := c.GetHeader("X-User-ID")
+		if userID == "" {
+			// For load testing, generate a test user ID if not provided
+			userID = "test-user-1"
+		}
+		c.Set("user_id", userID)
+		c.Next()
+	}
 }

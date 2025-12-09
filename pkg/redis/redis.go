@@ -22,6 +22,7 @@ type Config struct {
 	DialTimeout  time.Duration
 	ReadTimeout  time.Duration
 	WriteTimeout time.Duration
+	PoolTimeout  time.Duration
 
 	// Retry configuration
 	MaxRetries    int
@@ -72,6 +73,7 @@ func NewClient(ctx context.Context, cfg *Config) (*Client, error) {
 		DialTimeout:  cfg.DialTimeout,
 		ReadTimeout:  cfg.ReadTimeout,
 		WriteTimeout: cfg.WriteTimeout,
+		PoolTimeout:  cfg.PoolTimeout,
 	}
 
 	client := redis.NewClient(opts)
