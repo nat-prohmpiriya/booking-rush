@@ -11,18 +11,18 @@ import (
 type EventService interface {
 	// CreateEvent creates a new event
 	CreateEvent(ctx context.Context, req *dto.CreateEventRequest) (*domain.Event, error)
-	// GetEvent retrieves an event by ID
-	GetEvent(ctx context.Context, id string) (*domain.Event, error)
-	// GetEventsByTenant retrieves events by tenant ID
-	GetEventsByTenant(ctx context.Context, tenantID string, limit, offset int) ([]*domain.Event, error)
+	// GetEventByID retrieves an event by ID
+	GetEventByID(ctx context.Context, id string) (*domain.Event, error)
+	// GetEventBySlug retrieves an event by slug
+	GetEventBySlug(ctx context.Context, slug string) (*domain.Event, error)
+	// ListEvents lists events with filters and pagination
+	ListEvents(ctx context.Context, filter *dto.EventListFilter) ([]*domain.Event, int, error)
 	// UpdateEvent updates an event
 	UpdateEvent(ctx context.Context, id string, req *dto.UpdateEventRequest) (*domain.Event, error)
-	// DeleteEvent deletes an event
+	// DeleteEvent soft deletes an event
 	DeleteEvent(ctx context.Context, id string) error
 	// PublishEvent publishes an event
 	PublishEvent(ctx context.Context, id string) (*domain.Event, error)
-	// ListPublishedEvents lists all published events
-	ListPublishedEvents(ctx context.Context, limit, offset int) ([]*domain.Event, error)
 }
 
 // TicketService defines the interface for ticket business logic

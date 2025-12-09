@@ -604,22 +604,22 @@
 
 ---
 
-### [ ]  P3-09: Ticket Service - Event CRUD
+### [x]  P3-09: Ticket Service - Event CRUD
 | Field | Value |
 |-------|-------|
 | **Description** | Implement Event CRUD operations |
 | **Technical Context** | `apps/ticket-service/internal/handler/event_handler.go` |
 | **Acceptance Criteria** | - `GET /events` lists events (paginated)<br>- `GET /events/:slug` returns event detail<br>- `POST /events` creates event (Organizer only)<br>- `PUT /events/:id` updates event<br>- `DELETE /events/:id` soft deletes event |
 
-- [ ] Create Event domain model
-- [ ] Implement EventRepository
-- [ ] Implement list with pagination and filters
-- [ ] Implement get by slug
-- [ ] Implement create (with slug generation)
-- [ ] Implement update
-- [ ] Implement delete
-- [ ] Add authorization checks (Organizer role)
-- [ ] Write tests
+- [x] Create Event domain model
+- [x] Implement EventRepository
+- [x] Implement list with pagination and filters
+- [x] Implement get by slug
+- [x] Implement create (with slug generation)
+- [x] Implement update
+- [x] Implement delete
+- [x] Add authorization checks (Organizer role)
+- [x] Write tests
 
 ---
 

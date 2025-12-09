@@ -4,16 +4,18 @@ import "time"
 
 // Event represents an event in the system
 type Event struct {
-	ID          string    `json:"id"`
-	Name        string    `json:"name"`
-	Description string    `json:"description"`
-	VenueID     string    `json:"venue_id"`
-	StartTime   time.Time `json:"start_time"`
-	EndTime     time.Time `json:"end_time"`
-	Status      string    `json:"status"` // draft, published, cancelled, completed
-	TenantID    string    `json:"tenant_id"`
-	CreatedAt   time.Time `json:"created_at"`
-	UpdatedAt   time.Time `json:"updated_at"`
+	ID          string     `json:"id"`
+	Name        string     `json:"name"`
+	Slug        string     `json:"slug"`
+	Description string     `json:"description"`
+	VenueID     string     `json:"venue_id"`
+	StartTime   time.Time  `json:"start_time"`
+	EndTime     time.Time  `json:"end_time"`
+	Status      string     `json:"status"` // draft, published, cancelled, completed
+	TenantID    string     `json:"tenant_id"`
+	CreatedAt   time.Time  `json:"created_at"`
+	UpdatedAt   time.Time  `json:"updated_at"`
+	DeletedAt   *time.Time `json:"deleted_at,omitempty"`
 }
 
 // EventStatus constants

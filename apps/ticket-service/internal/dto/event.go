@@ -58,6 +58,7 @@ func (r *UpdateEventRequest) Validate() (bool, string) {
 type EventResponse struct {
 	ID          string `json:"id"`
 	Name        string `json:"name"`
+	Slug        string `json:"slug"`
 	Description string `json:"description"`
 	VenueID     string `json:"venue_id"`
 	StartTime   string `json:"start_time"`
@@ -74,4 +75,24 @@ type EventListResponse struct {
 	Total  int              `json:"total"`
 	Limit  int              `json:"limit"`
 	Offset int              `json:"offset"`
+}
+
+// EventListFilter represents filters for listing events
+type EventListFilter struct {
+	Status   string `form:"status"`
+	TenantID string `form:"-"`
+	VenueID  string `form:"venue_id"`
+	Search   string `form:"search"`
+	Limit    int    `form:"limit"`
+	Offset   int    `form:"offset"`
+}
+
+// SetDefaults sets default values for pagination
+func (f *EventListFilter) SetDefaults() {
+	if f.Limit <= 0 || f.Limit > 100 {
+		f.Limit = 20
+	}
+	if f.Offset < 0 {
+		f.Offset = 0
+	}
 }

@@ -12,14 +12,28 @@ type EventRepository interface {
 	Create(ctx context.Context, event *domain.Event) error
 	// GetByID retrieves an event by ID
 	GetByID(ctx context.Context, id string) (*domain.Event, error)
+	// GetBySlug retrieves an event by slug
+	GetBySlug(ctx context.Context, slug string) (*domain.Event, error)
 	// GetByTenantID retrieves events by tenant ID
 	GetByTenantID(ctx context.Context, tenantID string, limit, offset int) ([]*domain.Event, error)
 	// Update updates an event
 	Update(ctx context.Context, event *domain.Event) error
-	// Delete deletes an event by ID
+	// Delete soft deletes an event by ID
 	Delete(ctx context.Context, id string) error
-	// ListPublished lists all published events
-	ListPublished(ctx context.Context, limit, offset int) ([]*domain.Event, error)
+	// ListPublished lists all published events with pagination
+	ListPublished(ctx context.Context, limit, offset int) ([]*domain.Event, int, error)
+	// List lists events with filters and pagination
+	List(ctx context.Context, filter *EventFilter, limit, offset int) ([]*domain.Event, int, error)
+	// SlugExists checks if a slug already exists
+	SlugExists(ctx context.Context, slug string) (bool, error)
+}
+
+// EventFilter contains filter options for listing events
+type EventFilter struct {
+	Status   string
+	TenantID string
+	VenueID  string
+	Search   string
 }
 
 // VenueRepository defines the interface for venue data access

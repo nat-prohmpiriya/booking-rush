@@ -15,6 +15,7 @@ import (
 	"github.com/prohmpiriya/booking-rush-10k-rps/pkg/config"
 	"github.com/prohmpiriya/booking-rush-10k-rps/pkg/database"
 	"github.com/prohmpiriya/booking-rush-10k-rps/pkg/logger"
+	"github.com/prohmpiriya/booking-rush-10k-rps/pkg/middleware"
 )
 
 func main() {
@@ -83,19 +84,37 @@ func main() {
 	router.GET("/health", container.HealthHandler.Health)
 	router.GET("/ready", container.HealthHandler.Ready)
 
+	// JWT middleware configuration
+	jwtConfig := &middleware.JWTConfig{
+		Secret: cfg.JWT.Secret,
+		SkipPaths: []string{
+			"/health",
+			"/ready",
+		},
+	}
+
 	// API routes
 	v1 := router.Group("/api/v1")
 	{
-		// Events endpoints (to be implemented)
-		_ = v1.Group("/events")
-		// {
-		// 	events.GET("", container.EventHandler.List)
-		// 	events.GET("/:id", container.EventHandler.Get)
-		// 	events.POST("", container.EventHandler.Create)
-		// 	events.PUT("/:id", container.EventHandler.Update)
-		// 	events.DELETE("/:id", container.EventHandler.Delete)
-		// 	events.POST("/:id/publish", container.EventHandler.Publish)
-		// }
+		// Events endpoints - public read, authenticated write
+		events := v1.Group("/events")
+		{
+			// Public endpoints (no auth required)
+			events.GET("", container.EventHandler.List)
+			events.GET("/:slug", container.EventHandler.GetBySlug)
+			events.GET("/id/:id", container.EventHandler.GetByID)
+
+			// Protected endpoints (Organizer/Admin only)
+			protected := events.Group("")
+			protected.Use(middleware.JWTMiddleware(jwtConfig))
+			protected.Use(middleware.RequireRole("admin", "organizer"))
+			{
+				protected.POST("", container.EventHandler.Create)
+				protected.PUT("/:id", container.EventHandler.Update)
+				protected.DELETE("/:id", container.EventHandler.Delete)
+				protected.POST("/:id/publish", container.EventHandler.Publish)
+			}
+		}
 
 		// Tickets endpoints (to be implemented)
 		_ = v1.Group("/tickets")
