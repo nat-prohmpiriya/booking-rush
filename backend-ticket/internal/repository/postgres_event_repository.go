@@ -40,6 +40,7 @@ const eventColumns = `id, tenant_id, organizer_id, category_id, name, slug,
 	COALESCE(meta_title, '') as meta_title,
 	COALESCE(meta_description, '') as meta_description,
 	COALESCE(settings, '{}'::jsonb) as settings,
+	0 as min_price,
 	published_at, created_at, updated_at, deleted_at`
 
 // eventColumnsWithPrice includes min_price for queries with price aggregation
@@ -364,12 +365,12 @@ func (r *PostgresEventRepository) ListPublished(ctx context.Context, limit, offs
 		return nil, 0, err
 	}
 
-	// Get events with min_price from show_zones
+	// Get events with min_price from seat_zones
 	query := fmt.Sprintf(`
 		SELECT %s
 		FROM events e
 		LEFT JOIN shows s ON s.event_id = e.id AND s.deleted_at IS NULL
-		LEFT JOIN show_zones sz ON sz.show_id = s.id AND sz.deleted_at IS NULL
+		LEFT JOIN seat_zones sz ON sz.show_id = s.id AND sz.deleted_at IS NULL
 		WHERE e.status = $1 AND e.deleted_at IS NULL AND e.is_public = true
 		GROUP BY e.id, e.tenant_id, e.organizer_id, e.category_id, e.name, e.slug,
 			e.description, e.short_description, e.poster_url, e.banner_url, e.gallery,

@@ -82,11 +82,10 @@ export function useEvents(filter?: EventListFilter): UseEventsReturn {
       setEvents(mappedEvents)
       setTotal(response.meta?.total || 0)
     } catch (err) {
-      console.warn("Failed to fetch events from API, using mock data:", err)
-      const mockEvents = EVENTS_DATA.map(mapMockEventToDisplay)
-      setEvents(mockEvents)
-      setTotal(mockEvents.length)
-      setError(null)
+      console.error("Failed to fetch events from API:", err)
+      setError("Failed to load events. Please try again later.")
+      setEvents([])
+      setTotal(0)
     } finally {
       setIsLoading(false)
     }
