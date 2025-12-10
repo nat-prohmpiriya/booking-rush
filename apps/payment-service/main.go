@@ -179,14 +179,18 @@ func main() {
 			})
 		})
 
-		// Payment routes (placeholder for future implementation)
-		payments := v1.Group("/payments")
-		{
-			payments.GET("", func(c *gin.Context) {
-				c.JSON(http.StatusOK, gin.H{
-					"message": "payment list endpoint",
-				})
-			})
+		// Payment routes
+		if container.PaymentHandler != nil {
+			payments := v1.Group("/payments")
+			{
+				payments.POST("", container.PaymentHandler.CreatePayment)
+				payments.GET("/:id", container.PaymentHandler.GetPayment)
+				payments.POST("/:id/process", container.PaymentHandler.ProcessPayment)
+				payments.POST("/:id/refund", container.PaymentHandler.RefundPayment)
+				payments.POST("/:id/cancel", container.PaymentHandler.CancelPayment)
+				payments.GET("/booking/:bookingId", container.PaymentHandler.GetPaymentByBookingID)
+				payments.GET("/user/:userId", container.PaymentHandler.GetUserPayments)
+			}
 		}
 	}
 

@@ -754,17 +754,17 @@
 
 ---
 
-### [ ]  P4-04: Payment Service - HTTP Endpoints
+### [x]  P4-04: Payment Service - HTTP Endpoints
 | Field | Value |
 |-------|-------|
 | **Description** | Implement payment HTTP endpoints |
 | **Technical Context** | `apps/payment-service/internal/handler/` |
 | **Acceptance Criteria** | - `POST /payments` initiates payment<br>- `GET /payments/:id` returns status<br>- `POST /payments/:id/refund` requests refund |
 
-- [ ] Implement payment initiation endpoint
-- [ ] Implement payment status endpoint
-- [ ] Implement refund request endpoint
-- [ ] Write tests
+- [x] Implement payment initiation endpoint
+- [x] Implement payment status endpoint
+- [x] Implement refund request endpoint
+- [x] Write tests
 
 ---
 

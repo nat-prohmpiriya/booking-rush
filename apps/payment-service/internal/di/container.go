@@ -25,7 +25,8 @@ type Container struct {
 	PaymentService service.PaymentService
 
 	// Handlers
-	HealthHandler *handler.HealthHandler
+	HealthHandler  *handler.HealthHandler
+	PaymentHandler *handler.PaymentHandler
 }
 
 // ContainerConfig contains configuration for building the container
@@ -52,6 +53,7 @@ func NewContainer(cfg *ContainerConfig) *Container {
 	// Initialize PaymentService if repository and gateway are provided
 	if c.PaymentRepo != nil && c.PaymentGateway != nil {
 		c.PaymentService = service.NewPaymentService(c.PaymentRepo, c.PaymentGateway, cfg.ServiceConfig)
+		c.PaymentHandler = handler.NewPaymentHandler(c.PaymentService)
 	}
 
 	return c
