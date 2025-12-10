@@ -864,19 +864,19 @@
 
 ---
 
-### [ ]  P4-11: Reservation Expiry Worker
+### [x]  P4-11: Reservation Expiry Worker
 | Field | Value |
 |-------|-------|
 | **Description** | Implement worker สำหรับ expire reservations |
 | **Technical Context** | `apps/booking-service/cmd/expiry-worker/` |
 | **Acceptance Criteria** | - Scan expired reservations<br>- Release seats back to inventory<br>- Update booking status to `expired`<br>- Produce `booking.expired` event |
 
-- [ ] Create expiry worker
-- [ ] Scan for expired reservations (Redis keyspace notification or cron)
-- [ ] Release seats via Lua script
-- [ ] Update DB status
-- [ ] Produce expired event
-- [ ] Write tests
+- [x] Create expiry worker
+- [x] Scan for expired reservations (Redis keyspace notification or cron)
+- [x] Release seats via Lua script
+- [x] Update DB status
+- [x] Produce expired event
+- [x] Write tests
 
 ---
 
