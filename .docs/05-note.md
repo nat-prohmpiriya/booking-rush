@@ -1,0 +1,77 @@
+# ออกเสียงแบบนี้ครับ:
+
+  | Pattern       | ออกเสียง         | ความหมาย
+                   |
+  |---------------|------------------|--------------------------
+  ------------------|
+  | Orchestration | ออ-เคส-เทร-ชั่น  | การควบคุมแบบวงออเคสตรา
+  (มีวาทยกรคุม)       |
+  | Choreography  | คอ-รี-ออก-กระ-ฟี | การเต้นรำแบบออกแบบท่า
+  (เต้นเองตาม pattern) |
+
+  เปรียบเทียบง่ายๆ
+
+  Orchestration 🎻 = วงออเคสตรา
+  - มี conductor (วาทยกร) คอยสั่งว่าใครเล่นเมื่อไหร่
+  - ทุกคนทำตาม conductor
+
+  Choreography 💃 = การเต้นรำ
+  - ไม่มีคนสั่ง แต่ทุกคน รู้ท่าเต้นของตัวเอง
+  - พอเห็น signal ก็ทำต่อเอง
+
+  ---
+  ในโปรเจคเรา Orchestrator คือ "วาทยกร" ที่สั่ง:
+  1. "Booking Service - จองที่นั่ง!"
+  2. "Payment Service - ตัดเงิน!"
+  3. "Notification - ส่งอีเมล!"
+
+# Saga Pattern มี 2 แบบหลักๆ:
+
+  Saga Pattern Types
+
+  1. Orchestration (ที่เราใช้) 🎯
+
+                      ┌─────────────────┐
+                      │  Orchestrator   │  ← Central coordinator
+                      └────────┬────────┘
+             ┌─────────────────┼─────────────────┐
+             ▼                 ▼                 ▼
+        ┌─────────┐      ┌─────────┐      ┌─────────┐
+        │ Step 1  │      │ Step 2  │      │ Step 3  │
+        │ Reserve │ ───► │ Payment │ ───► │ Confirm │
+        └─────────┘      └─────────┘      └─────────┘
+  - มี central controller คอยสั่งการทุก step
+  - Orchestrator รู้ flow ทั้งหมด
+  - ง่ายต่อการ debug และ monitor
+  - เหมาะกับ: Complex flows, ต้องการ visibility สูง
+
+  2. Choreography (อีกแบบ)
+
+        ┌─────────┐      ┌─────────┐      ┌─────────┐
+        │ Step 1  │ ───► │ Step 2  │ ───► │ Step 3  │
+        │ Reserve │      │ Payment │      │ Confirm │
+        └────┬────┘      └────┬────┘      └────┬────┘
+             │                │                │
+             └────────────────┴────────────────┘
+                      Event Bus (Kafka)
+  - ไม่มี central controller - แต่ละ service ฟัง events แล้วทำต่อเอง
+  - Decoupled มากกว่า
+  - ยากต่อการ debug (distributed)
+  - เหมาะกับ: Simple flows, ต้องการ loose coupling
+
+  ---
+  ทำไมเราเลือก Orchestration?
+
+  สำหรับ Booking Rush (10k RPS) เลือก Orchestration เพราะ:
+
+  1. Booking flow ซับซ้อน - Reserve → Pay → Confirm ต้องเป็น
+  sequence
+  2. ต้องการ compensation ที่ชัดเจน - ถ้า payment fail ต้อง release
+  seats ทันที
+  3. Visibility สำคัญ - ต้องรู้ว่า booking อยู่ state ไหน
+  4. Easier to debug - เมื่อมีปัญหาสามารถ trace ได้ง่าย
+
+  ใน pkg/saga/ ที่สร้างไป:
+  - orchestrator.go = Central coordinator
+  - state.go = State machine (CREATED → RESERVED → PAID →
+  CONFIRMED)

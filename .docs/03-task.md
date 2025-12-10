@@ -799,21 +799,21 @@
 
 ---
 
-### [ ]  P4-07: Booking Saga Implementation
+### [x]  P4-07: Booking Saga Implementation
 | Field | Value |
 |-------|-------|
 | **Description** | Implement Booking Saga with all steps |
 | **Technical Context** | `apps/booking-service/internal/saga/booking_saga.go` |
 | **Acceptance Criteria** | - Step 1: Reserve Seats (compensate: Release)<br>- Step 2: Process Payment (compensate: Refund)<br>- Step 3: Confirm Booking<br>- Step 4: Send Notification |
 
-- [ ] Define BookingSaga with steps
-- [ ] Implement Reserve step
-- [ ] Implement Release compensation
-- [ ] Implement Payment step
-- [ ] Implement Refund compensation
-- [ ] Implement Confirm step
-- [ ] Implement Notification step
-- [ ] Write integration tests
+- [x] Define BookingSaga with steps
+- [x] Implement Reserve step
+- [x] Implement Release compensation
+- [x] Implement Payment step
+- [x] Implement Refund compensation
+- [x] Implement Confirm step
+- [x] Implement Notification step
+- [x] Write integration tests
 
 ---
 
