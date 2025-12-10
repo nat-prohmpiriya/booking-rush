@@ -33,15 +33,15 @@ export const eventsApi = {
 }
 
 export const showsApi = {
-  async listByEvent(eventId: string, limit?: number, offset?: number): Promise<ShowListResponse> {
+  async listByEvent(eventSlug: string, limit?: number, offset?: number): Promise<ShowListResponse> {
     const params = new URLSearchParams()
     if (limit) params.append("limit", limit.toString())
     if (offset) params.append("offset", offset.toString())
 
     const queryString = params.toString()
     const endpoint = queryString
-      ? `/events/${eventId}/shows?${queryString}`
-      : `/events/${eventId}/shows`
+      ? `/events/${eventSlug}/shows?${queryString}`
+      : `/events/${eventSlug}/shows`
     return apiClient.get<ShowListResponse>(endpoint)
   },
 

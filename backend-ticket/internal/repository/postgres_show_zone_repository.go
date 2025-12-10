@@ -10,6 +10,15 @@ import (
 	"github.com/prohmpiriya/booking-rush-10k-rps/backend-ticket/internal/domain"
 )
 
+// seatZoneColumns defines columns for seat_zones table
+const seatZoneColumns = `id, show_id, name, COALESCE(description, '') as description,
+	COALESCE(color, '') as color, price, COALESCE(currency, 'THB') as currency,
+	total_seats, available_seats, COALESCE(reserved_seats, 0) as reserved_seats,
+	COALESCE(sold_seats, 0) as sold_seats, COALESCE(min_per_order, 1) as min_per_order,
+	COALESCE(max_per_order, 10) as max_per_order, COALESCE(is_active, true) as is_active,
+	COALESCE(sort_order, 0) as sort_order, sale_start_at, sale_end_at,
+	created_at, updated_at, deleted_at`
+
 // PostgresShowZoneRepository implements ShowZoneRepository using PostgreSQL
 type PostgresShowZoneRepository struct {
 	pool *pgxpool.Pool
@@ -20,44 +29,27 @@ func NewPostgresShowZoneRepository(pool *pgxpool.Pool) *PostgresShowZoneReposito
 	return &PostgresShowZoneRepository{pool: pool}
 }
 
-// Create creates a new show zone
-func (r *PostgresShowZoneRepository) Create(ctx context.Context, zone *domain.ShowZone) error {
-	query := `
-		INSERT INTO show_zones (id, show_id, name, price, total_seats, available_seats, description, sort_order, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-	`
-	_, err := r.pool.Exec(ctx, query,
-		zone.ID,
-		zone.ShowID,
-		zone.Name,
-		zone.Price,
-		zone.TotalSeats,
-		zone.AvailableSeats,
-		zone.Description,
-		zone.SortOrder,
-		zone.CreatedAt,
-		zone.UpdatedAt,
-	)
-	return err
-}
-
-// GetByID retrieves a show zone by ID
-func (r *PostgresShowZoneRepository) GetByID(ctx context.Context, id string) (*domain.ShowZone, error) {
-	query := `
-		SELECT id, show_id, name, price, total_seats, available_seats, description, sort_order, created_at, updated_at, deleted_at
-		FROM show_zones
-		WHERE id = $1 AND deleted_at IS NULL
-	`
+// scanZone scans a row into a ShowZone struct
+func (r *PostgresShowZoneRepository) scanZone(row pgx.Row) (*domain.ShowZone, error) {
 	zone := &domain.ShowZone{}
-	err := r.pool.QueryRow(ctx, query, id).Scan(
+	err := row.Scan(
 		&zone.ID,
 		&zone.ShowID,
 		&zone.Name,
+		&zone.Description,
+		&zone.Color,
 		&zone.Price,
+		&zone.Currency,
 		&zone.TotalSeats,
 		&zone.AvailableSeats,
-		&zone.Description,
+		&zone.ReservedSeats,
+		&zone.SoldSeats,
+		&zone.MinPerOrder,
+		&zone.MaxPerOrder,
+		&zone.IsActive,
 		&zone.SortOrder,
+		&zone.SaleStartAt,
+		&zone.SaleEndAt,
 		&zone.CreatedAt,
 		&zone.UpdatedAt,
 		&zone.DeletedAt,
@@ -71,10 +63,46 @@ func (r *PostgresShowZoneRepository) GetByID(ctx context.Context, id string) (*d
 	return zone, nil
 }
 
+// Create creates a new show zone
+func (r *PostgresShowZoneRepository) Create(ctx context.Context, zone *domain.ShowZone) error {
+	query := `
+		INSERT INTO seat_zones (id, show_id, name, description, color, price, currency,
+			total_seats, available_seats, min_per_order, max_per_order, is_active,
+			sort_order, sale_start_at, sale_end_at, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
+	`
+	_, err := r.pool.Exec(ctx, query,
+		zone.ID,
+		zone.ShowID,
+		zone.Name,
+		zone.Description,
+		zone.Color,
+		zone.Price,
+		zone.Currency,
+		zone.TotalSeats,
+		zone.AvailableSeats,
+		zone.MinPerOrder,
+		zone.MaxPerOrder,
+		zone.IsActive,
+		zone.SortOrder,
+		zone.SaleStartAt,
+		zone.SaleEndAt,
+		zone.CreatedAt,
+		zone.UpdatedAt,
+	)
+	return err
+}
+
+// GetByID retrieves a show zone by ID
+func (r *PostgresShowZoneRepository) GetByID(ctx context.Context, id string) (*domain.ShowZone, error) {
+	query := `SELECT ` + seatZoneColumns + ` FROM seat_zones WHERE id = $1 AND deleted_at IS NULL`
+	return r.scanZone(r.pool.QueryRow(ctx, query, id))
+}
+
 // GetByShowID retrieves all zones for a show with pagination
 func (r *PostgresShowZoneRepository) GetByShowID(ctx context.Context, showID string, limit, offset int) ([]*domain.ShowZone, int, error) {
 	// Count total
-	countQuery := `SELECT COUNT(*) FROM show_zones WHERE show_id = $1 AND deleted_at IS NULL`
+	countQuery := `SELECT COUNT(*) FROM seat_zones WHERE show_id = $1 AND deleted_at IS NULL`
 	var total int
 	err := r.pool.QueryRow(ctx, countQuery, showID).Scan(&total)
 	if err != nil {
@@ -82,13 +110,10 @@ func (r *PostgresShowZoneRepository) GetByShowID(ctx context.Context, showID str
 	}
 
 	// Get zones
-	query := `
-		SELECT id, show_id, name, price, total_seats, available_seats, description, sort_order, created_at, updated_at, deleted_at
-		FROM show_zones
+	query := `SELECT ` + seatZoneColumns + ` FROM seat_zones
 		WHERE show_id = $1 AND deleted_at IS NULL
 		ORDER BY sort_order ASC, name ASC
-		LIMIT $2 OFFSET $3
-	`
+		LIMIT $2 OFFSET $3`
 	rows, err := r.pool.Query(ctx, query, showID, limit, offset)
 	if err != nil {
 		return nil, 0, err
@@ -102,11 +127,20 @@ func (r *PostgresShowZoneRepository) GetByShowID(ctx context.Context, showID str
 			&zone.ID,
 			&zone.ShowID,
 			&zone.Name,
+			&zone.Description,
+			&zone.Color,
 			&zone.Price,
+			&zone.Currency,
 			&zone.TotalSeats,
 			&zone.AvailableSeats,
-			&zone.Description,
+			&zone.ReservedSeats,
+			&zone.SoldSeats,
+			&zone.MinPerOrder,
+			&zone.MaxPerOrder,
+			&zone.IsActive,
 			&zone.SortOrder,
+			&zone.SaleStartAt,
+			&zone.SaleEndAt,
 			&zone.CreatedAt,
 			&zone.UpdatedAt,
 			&zone.DeletedAt,
@@ -122,18 +156,24 @@ func (r *PostgresShowZoneRepository) GetByShowID(ctx context.Context, showID str
 // Update updates a show zone
 func (r *PostgresShowZoneRepository) Update(ctx context.Context, zone *domain.ShowZone) error {
 	query := `
-		UPDATE show_zones
-		SET name = $2, price = $3, total_seats = $4, available_seats = $5, description = $6, sort_order = $7, updated_at = $8
+		UPDATE seat_zones
+		SET name = $2, description = $3, color = $4, price = $5, total_seats = $6,
+			available_seats = $7, min_per_order = $8, max_per_order = $9, is_active = $10,
+			sort_order = $11, updated_at = $12
 		WHERE id = $1 AND deleted_at IS NULL
 	`
 	zone.UpdatedAt = time.Now()
 	result, err := r.pool.Exec(ctx, query,
 		zone.ID,
 		zone.Name,
+		zone.Description,
+		zone.Color,
 		zone.Price,
 		zone.TotalSeats,
 		zone.AvailableSeats,
-		zone.Description,
+		zone.MinPerOrder,
+		zone.MaxPerOrder,
+		zone.IsActive,
 		zone.SortOrder,
 		zone.UpdatedAt,
 	)
@@ -141,7 +181,7 @@ func (r *PostgresShowZoneRepository) Update(ctx context.Context, zone *domain.Sh
 		return err
 	}
 	if result.RowsAffected() == 0 {
-		return errors.New("show zone not found")
+		return errors.New("seat zone not found")
 	}
 	return nil
 }
@@ -149,7 +189,7 @@ func (r *PostgresShowZoneRepository) Update(ctx context.Context, zone *domain.Sh
 // Delete soft deletes a show zone by ID
 func (r *PostgresShowZoneRepository) Delete(ctx context.Context, id string) error {
 	query := `
-		UPDATE show_zones
+		UPDATE seat_zones
 		SET deleted_at = $2, updated_at = $2
 		WHERE id = $1 AND deleted_at IS NULL
 	`
@@ -159,7 +199,7 @@ func (r *PostgresShowZoneRepository) Delete(ctx context.Context, id string) erro
 		return err
 	}
 	if result.RowsAffected() == 0 {
-		return errors.New("show zone not found")
+		return errors.New("seat zone not found")
 	}
 	return nil
 }
@@ -167,7 +207,7 @@ func (r *PostgresShowZoneRepository) Delete(ctx context.Context, id string) erro
 // UpdateAvailableSeats updates the available seats count
 func (r *PostgresShowZoneRepository) UpdateAvailableSeats(ctx context.Context, id string, availableSeats int) error {
 	query := `
-		UPDATE show_zones
+		UPDATE seat_zones
 		SET available_seats = $2, updated_at = $3
 		WHERE id = $1 AND deleted_at IS NULL
 	`
@@ -177,7 +217,7 @@ func (r *PostgresShowZoneRepository) UpdateAvailableSeats(ctx context.Context, i
 		return err
 	}
 	if result.RowsAffected() == 0 {
-		return errors.New("show zone not found")
+		return errors.New("seat zone not found")
 	}
 	return nil
 }

@@ -108,7 +108,20 @@ class ApiClient {
       return {} as T
     }
 
-    return response.json()
+    const json = await response.json()
+    // Backend wraps response in { success: boolean, data: T }
+    // For paginated responses: { success: boolean, data: T[], meta: {...} }
+    if (json && typeof json === "object" && "success" in json) {
+      // Paginated response with meta
+      if ("meta" in json) {
+        return { data: json.data, meta: json.meta } as T
+      }
+      // Regular response with data wrapper
+      if ("data" in json) {
+        return json.data as T
+      }
+    }
+    return json as T
   }
 
   async get<T>(endpoint: string, options?: Omit<RequestOptions, "method" | "body">): Promise<T> {

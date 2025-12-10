@@ -8,16 +8,40 @@ import { TicketSelector } from "@/components/event-detail/ticket-selector"
 import { StickyCheckout } from "@/components/event-detail/sticky-checkout"
 import { CountdownTimer } from "@/components/event-detail/countdown-timer"
 import { Header } from "@/components/header"
-import { getEventById } from "@/lib/events-data"
+import { useEventDetail, type TicketZoneDisplay } from "@/hooks/use-events"
+import { Skeleton } from "@/components/ui/skeleton"
 
 export default function EventDetailPage() {
   const params = useParams()
-  const eventId = Number(params.id)
-  const event = getEventById(eventId)
+  const eventId = params.id as string
+
+  const { event, shows, zones, selectedShow, isLoading, error, setSelectedShow } = useEventDetail(eventId)
 
   const [selectedTickets, setSelectedTickets] = useState<Record<string, number>>({})
 
-  if (!event) {
+  // Show loading state
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-[#0a0a0a] text-white">
+        <Header />
+        <div className="h-[60vh] relative">
+          <Skeleton className="w-full h-full" />
+        </div>
+        <div className="container mx-auto px-4 pb-32">
+          <div className="relative -mt-32 z-10">
+            <div className="max-w-4xl mx-auto space-y-8">
+              <Skeleton className="h-16 w-3/4" />
+              <Skeleton className="h-8 w-1/2" />
+              <Skeleton className="h-32 w-full" />
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // If no event found, show 404
+  if (!event || error) {
     notFound()
   }
 
@@ -33,7 +57,7 @@ export default function EventDetailPage() {
 
   const getTotalPrice = () => {
     return Object.entries(selectedTickets).reduce((total, [zoneId, quantity]) => {
-      const zone = event.ticketZones.find((z) => z.id === zoneId)
+      const zone = zones.find((z) => z.id === zoneId)
       return total + (zone?.price || 0) * quantity
     }, 0)
   }
@@ -42,10 +66,40 @@ export default function EventDetailPage() {
     return Object.values(selectedTickets).reduce((sum, qty) => sum + qty, 0)
   }
 
+  // Format show time for display
+  const formatShowTime = () => {
+    if (!selectedShow) return "TBA"
+    const startTime = new Date(selectedShow.start_time)
+    const endTime = new Date(selectedShow.end_time)
+    return `${startTime.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true })} - ${endTime.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true })}`
+  }
+
+  // Format doors open time
+  const formatDoorsOpen = () => {
+    if (!selectedShow?.doors_open_at) {
+      if (!selectedShow) return "TBA"
+      // Default to 1 hour before start
+      const startTime = new Date(selectedShow.start_time)
+      const doorsOpen = new Date(startTime.getTime() - 60 * 60 * 1000)
+      return doorsOpen.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true })
+    }
+    const doorsOpen = new Date(selectedShow.doors_open_at)
+    return doorsOpen.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true })
+  }
+
+  // Convert zones to TicketSelector format
+  const ticketZones = zones.map((zone: TicketZoneDisplay) => ({
+    id: zone.id,
+    name: zone.name,
+    price: zone.price,
+    available: zone.available,
+    soldOut: zone.soldOut,
+  }))
+
   return (
     <div className="min-h-screen bg-[#0a0a0a] text-white">
       <Header />
-      <EventHero image={event.heroImage} />
+      <EventHero image={event.heroImage || event.image} />
 
       <div className="container mx-auto px-4 pb-32">
         <div className="relative -mt-32 z-10">
@@ -57,23 +111,51 @@ export default function EventDetailPage() {
 
             <CountdownTimer />
 
+            {/* Show selector if multiple shows */}
+            {shows.length > 1 && (
+              <div className="bg-zinc-900/50 p-6 rounded-xl">
+                <h3 className="text-lg font-semibold mb-4">Select Show</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                  {shows.map((show) => (
+                    <button
+                      key={show.id}
+                      onClick={() => {
+                        setSelectedShow(show)
+                        setSelectedTickets({}) // Reset ticket selection
+                      }}
+                      className={`p-4 rounded-lg border-2 transition-all ${
+                        selectedShow?.id === show.id
+                          ? "border-[#d4af37] bg-[#d4af37]/10"
+                          : "border-zinc-700 hover:border-zinc-500"
+                      }`}
+                    >
+                      <div className="text-sm text-zinc-400">{show.show_date}</div>
+                      <div className="font-medium">{show.name}</div>
+                      <div className="text-sm text-zinc-400">
+                        {new Date(show.start_time).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true })}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <EventInfo
-              date={event.fullDate.split(",")[0] + "," + event.fullDate.split(",")[1]}
+              date={event.fullDate?.split(",").slice(0, 2).join(",") || event.date}
               year="2025"
-              time={event.time.split(" - ")[0]}
-              doorsOpen={(() => {
-                const startTime = event.time.split(" - ")[0]
-                const [time, period] = startTime.split(" ")
-                const [hours, minutes] = time.split(":")
-                const hour = parseInt(hours)
-                const newHour = hour === 1 ? 12 : hour - 1
-                return `${newHour}:${minutes} ${period}`
-              })()}
+              time={formatShowTime()}
+              doorsOpen={formatDoorsOpen()}
               venue={event.venue.split(",")[0]}
-              location={event.venue.includes(",") ? event.venue.split(",")[1].trim() : event.venue}
+              location={event.venue.includes(",") ? event.venue.split(",")[1].trim() : (event.city || event.venue)}
             />
 
-            <TicketSelector zones={event.ticketZones} selectedTickets={selectedTickets} onTicketChange={handleTicketChange} />
+            {zones.length > 0 ? (
+              <TicketSelector zones={ticketZones} selectedTickets={selectedTickets} onTicketChange={handleTicketChange} />
+            ) : (
+              <div className="bg-zinc-900/50 p-6 rounded-xl text-center">
+                <p className="text-zinc-400">No ticket zones available for this show.</p>
+              </div>
+            )}
           </div>
         </div>
       </div>

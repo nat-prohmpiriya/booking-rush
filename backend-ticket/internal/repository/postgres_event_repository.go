@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -22,22 +23,193 @@ func NewPostgresEventRepository(pool *pgxpool.Pool) *PostgresEventRepository {
 	return &PostgresEventRepository{pool: pool}
 }
 
+// eventColumns defines the columns to select for events
+// Using COALESCE for nullable string columns to avoid scan errors
+const eventColumns = `id, tenant_id, organizer_id, category_id, name, slug,
+	COALESCE(description, '') as description,
+	COALESCE(short_description, '') as short_description,
+	COALESCE(poster_url, '') as poster_url,
+	COALESCE(banner_url, '') as banner_url,
+	COALESCE(gallery, '[]'::jsonb) as gallery,
+	COALESCE(venue_name, '') as venue_name,
+	COALESCE(venue_address, '') as venue_address,
+	COALESCE(city, '') as city,
+	COALESCE(country, '') as country,
+	latitude, longitude, max_tickets_per_user, booking_start_at,
+	booking_end_at, status, is_featured, is_public,
+	COALESCE(meta_title, '') as meta_title,
+	COALESCE(meta_description, '') as meta_description,
+	COALESCE(settings, '{}'::jsonb) as settings,
+	published_at, created_at, updated_at, deleted_at`
+
+// scanEvent scans a row into an Event struct
+func (r *PostgresEventRepository) scanEvent(row pgx.Row) (*domain.Event, error) {
+	event := &domain.Event{}
+	var galleryJSON []byte
+	var settingsJSON []byte
+
+	err := row.Scan(
+		&event.ID,
+		&event.TenantID,
+		&event.OrganizerID,
+		&event.CategoryID,
+		&event.Name,
+		&event.Slug,
+		&event.Description,
+		&event.ShortDescription,
+		&event.PosterURL,
+		&event.BannerURL,
+		&galleryJSON,
+		&event.VenueName,
+		&event.VenueAddress,
+		&event.City,
+		&event.Country,
+		&event.Latitude,
+		&event.Longitude,
+		&event.MaxTicketsPerUser,
+		&event.BookingStartAt,
+		&event.BookingEndAt,
+		&event.Status,
+		&event.IsFeatured,
+		&event.IsPublic,
+		&event.MetaTitle,
+		&event.MetaDescription,
+		&settingsJSON,
+		&event.PublishedAt,
+		&event.CreatedAt,
+		&event.UpdatedAt,
+		&event.DeletedAt,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	// Parse gallery JSON
+	if galleryJSON != nil {
+		json.Unmarshal(galleryJSON, &event.Gallery)
+	}
+	if event.Gallery == nil {
+		event.Gallery = []string{}
+	}
+
+	// Parse settings JSON
+	if settingsJSON != nil {
+		event.Settings = string(settingsJSON)
+	}
+
+	return event, nil
+}
+
+// scanEvents scans multiple rows into Event structs
+func (r *PostgresEventRepository) scanEvents(rows pgx.Rows) ([]*domain.Event, error) {
+	var events []*domain.Event
+	for rows.Next() {
+		event := &domain.Event{}
+		var galleryJSON []byte
+		var settingsJSON []byte
+
+		err := rows.Scan(
+			&event.ID,
+			&event.TenantID,
+			&event.OrganizerID,
+			&event.CategoryID,
+			&event.Name,
+			&event.Slug,
+			&event.Description,
+			&event.ShortDescription,
+			&event.PosterURL,
+			&event.BannerURL,
+			&galleryJSON,
+			&event.VenueName,
+			&event.VenueAddress,
+			&event.City,
+			&event.Country,
+			&event.Latitude,
+			&event.Longitude,
+			&event.MaxTicketsPerUser,
+			&event.BookingStartAt,
+			&event.BookingEndAt,
+			&event.Status,
+			&event.IsFeatured,
+			&event.IsPublic,
+			&event.MetaTitle,
+			&event.MetaDescription,
+			&settingsJSON,
+			&event.PublishedAt,
+			&event.CreatedAt,
+			&event.UpdatedAt,
+			&event.DeletedAt,
+		)
+		if err != nil {
+			return nil, err
+		}
+
+		// Parse gallery JSON
+		if galleryJSON != nil {
+			json.Unmarshal(galleryJSON, &event.Gallery)
+		}
+		if event.Gallery == nil {
+			event.Gallery = []string{}
+		}
+
+		// Parse settings JSON
+		if settingsJSON != nil {
+			event.Settings = string(settingsJSON)
+		}
+
+		events = append(events, event)
+	}
+	return events, nil
+}
+
 // Create creates a new event
 func (r *PostgresEventRepository) Create(ctx context.Context, event *domain.Event) error {
 	query := `
-		INSERT INTO events (id, name, slug, description, venue_id, start_time, end_time, status, tenant_id, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+		INSERT INTO events (
+			id, tenant_id, organizer_id, category_id, name, slug, description,
+			short_description, poster_url, banner_url, gallery, venue_name, venue_address,
+			city, country, latitude, longitude, max_tickets_per_user, booking_start_at,
+			booking_end_at, status, is_featured, is_public, meta_title, meta_description,
+			settings, published_at, created_at, updated_at
+		) VALUES (
+			$1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29
+		)
 	`
+
+	galleryJSON, _ := json.Marshal(event.Gallery)
+	settingsJSON := event.Settings
+	if settingsJSON == "" {
+		settingsJSON = "{}"
+	}
+
 	_, err := r.pool.Exec(ctx, query,
 		event.ID,
+		event.TenantID,
+		event.OrganizerID,
+		event.CategoryID,
 		event.Name,
 		event.Slug,
 		event.Description,
-		event.VenueID,
-		event.StartTime,
-		event.EndTime,
+		event.ShortDescription,
+		event.PosterURL,
+		event.BannerURL,
+		galleryJSON,
+		event.VenueName,
+		event.VenueAddress,
+		event.City,
+		event.Country,
+		event.Latitude,
+		event.Longitude,
+		event.MaxTicketsPerUser,
+		event.BookingStartAt,
+		event.BookingEndAt,
 		event.Status,
-		event.TenantID,
+		event.IsFeatured,
+		event.IsPublic,
+		event.MetaTitle,
+		event.MetaDescription,
+		settingsJSON,
+		event.PublishedAt,
 		event.CreatedAt,
 		event.UpdatedAt,
 	)
@@ -46,26 +218,8 @@ func (r *PostgresEventRepository) Create(ctx context.Context, event *domain.Even
 
 // GetByID retrieves an event by ID
 func (r *PostgresEventRepository) GetByID(ctx context.Context, id string) (*domain.Event, error) {
-	query := `
-		SELECT id, name, slug, description, venue_id, start_time, end_time, status, tenant_id, created_at, updated_at, deleted_at
-		FROM events
-		WHERE id = $1 AND deleted_at IS NULL
-	`
-	event := &domain.Event{}
-	err := r.pool.QueryRow(ctx, query, id).Scan(
-		&event.ID,
-		&event.Name,
-		&event.Slug,
-		&event.Description,
-		&event.VenueID,
-		&event.StartTime,
-		&event.EndTime,
-		&event.Status,
-		&event.TenantID,
-		&event.CreatedAt,
-		&event.UpdatedAt,
-		&event.DeletedAt,
-	)
+	query := fmt.Sprintf(`SELECT %s FROM events WHERE id = $1 AND deleted_at IS NULL`, eventColumns)
+	event, err := r.scanEvent(r.pool.QueryRow(ctx, query, id))
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, nil
@@ -77,26 +231,8 @@ func (r *PostgresEventRepository) GetByID(ctx context.Context, id string) (*doma
 
 // GetBySlug retrieves an event by slug
 func (r *PostgresEventRepository) GetBySlug(ctx context.Context, slug string) (*domain.Event, error) {
-	query := `
-		SELECT id, name, slug, description, venue_id, start_time, end_time, status, tenant_id, created_at, updated_at, deleted_at
-		FROM events
-		WHERE slug = $1 AND deleted_at IS NULL
-	`
-	event := &domain.Event{}
-	err := r.pool.QueryRow(ctx, query, slug).Scan(
-		&event.ID,
-		&event.Name,
-		&event.Slug,
-		&event.Description,
-		&event.VenueID,
-		&event.StartTime,
-		&event.EndTime,
-		&event.Status,
-		&event.TenantID,
-		&event.CreatedAt,
-		&event.UpdatedAt,
-		&event.DeletedAt,
-	)
+	query := fmt.Sprintf(`SELECT %s FROM events WHERE slug = $1 AND deleted_at IS NULL`, eventColumns)
+	event, err := r.scanEvent(r.pool.QueryRow(ctx, query, slug))
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, nil
@@ -108,61 +244,66 @@ func (r *PostgresEventRepository) GetBySlug(ctx context.Context, slug string) (*
 
 // GetByTenantID retrieves events by tenant ID
 func (r *PostgresEventRepository) GetByTenantID(ctx context.Context, tenantID string, limit, offset int) ([]*domain.Event, error) {
-	query := `
-		SELECT id, name, slug, description, venue_id, start_time, end_time, status, tenant_id, created_at, updated_at, deleted_at
-		FROM events
+	query := fmt.Sprintf(`
+		SELECT %s FROM events
 		WHERE tenant_id = $1 AND deleted_at IS NULL
 		ORDER BY created_at DESC
 		LIMIT $2 OFFSET $3
-	`
+	`, eventColumns)
+
 	rows, err := r.pool.Query(ctx, query, tenantID, limit, offset)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	var events []*domain.Event
-	for rows.Next() {
-		event := &domain.Event{}
-		err := rows.Scan(
-			&event.ID,
-			&event.Name,
-			&event.Slug,
-			&event.Description,
-			&event.VenueID,
-			&event.StartTime,
-			&event.EndTime,
-			&event.Status,
-			&event.TenantID,
-			&event.CreatedAt,
-			&event.UpdatedAt,
-			&event.DeletedAt,
-		)
-		if err != nil {
-			return nil, err
-		}
-		events = append(events, event)
-	}
-	return events, nil
+	return r.scanEvents(rows)
 }
 
 // Update updates an event
 func (r *PostgresEventRepository) Update(ctx context.Context, event *domain.Event) error {
 	query := `
-		UPDATE events
-		SET name = $2, slug = $3, description = $4, venue_id = $5, start_time = $6, end_time = $7, status = $8, updated_at = $9
+		UPDATE events SET
+			name = $2, slug = $3, description = $4, short_description = $5,
+			poster_url = $6, banner_url = $7, gallery = $8, venue_name = $9,
+			venue_address = $10, city = $11, country = $12, latitude = $13,
+			longitude = $14, max_tickets_per_user = $15, booking_start_at = $16,
+			booking_end_at = $17, status = $18, is_featured = $19, is_public = $20,
+			meta_title = $21, meta_description = $22, settings = $23, updated_at = $24
 		WHERE id = $1 AND deleted_at IS NULL
 	`
+
+	galleryJSON, _ := json.Marshal(event.Gallery)
+	settingsJSON := event.Settings
+	if settingsJSON == "" {
+		settingsJSON = "{}"
+	}
+
 	event.UpdatedAt = time.Now()
 	result, err := r.pool.Exec(ctx, query,
 		event.ID,
 		event.Name,
 		event.Slug,
 		event.Description,
-		event.VenueID,
-		event.StartTime,
-		event.EndTime,
+		event.ShortDescription,
+		event.PosterURL,
+		event.BannerURL,
+		galleryJSON,
+		event.VenueName,
+		event.VenueAddress,
+		event.City,
+		event.Country,
+		event.Latitude,
+		event.Longitude,
+		event.MaxTicketsPerUser,
+		event.BookingStartAt,
+		event.BookingEndAt,
 		event.Status,
+		event.IsFeatured,
+		event.IsPublic,
+		event.MetaTitle,
+		event.MetaDescription,
+		settingsJSON,
 		event.UpdatedAt,
 	)
 	if err != nil {
@@ -195,7 +336,7 @@ func (r *PostgresEventRepository) Delete(ctx context.Context, id string) error {
 // ListPublished lists all published events with pagination
 func (r *PostgresEventRepository) ListPublished(ctx context.Context, limit, offset int) ([]*domain.Event, int, error) {
 	// Count total
-	countQuery := `SELECT COUNT(*) FROM events WHERE status = $1 AND deleted_at IS NULL`
+	countQuery := `SELECT COUNT(*) FROM events WHERE status = $1 AND deleted_at IS NULL AND is_public = true`
 	var total int
 	err := r.pool.QueryRow(ctx, countQuery, domain.EventStatusPublished).Scan(&total)
 	if err != nil {
@@ -203,40 +344,22 @@ func (r *PostgresEventRepository) ListPublished(ctx context.Context, limit, offs
 	}
 
 	// Get events
-	query := `
-		SELECT id, name, slug, description, venue_id, start_time, end_time, status, tenant_id, created_at, updated_at, deleted_at
-		FROM events
-		WHERE status = $1 AND deleted_at IS NULL
-		ORDER BY start_time ASC
+	query := fmt.Sprintf(`
+		SELECT %s FROM events
+		WHERE status = $1 AND deleted_at IS NULL AND is_public = true
+		ORDER BY created_at DESC
 		LIMIT $2 OFFSET $3
-	`
+	`, eventColumns)
+
 	rows, err := r.pool.Query(ctx, query, domain.EventStatusPublished, limit, offset)
 	if err != nil {
 		return nil, 0, err
 	}
 	defer rows.Close()
 
-	var events []*domain.Event
-	for rows.Next() {
-		event := &domain.Event{}
-		err := rows.Scan(
-			&event.ID,
-			&event.Name,
-			&event.Slug,
-			&event.Description,
-			&event.VenueID,
-			&event.StartTime,
-			&event.EndTime,
-			&event.Status,
-			&event.TenantID,
-			&event.CreatedAt,
-			&event.UpdatedAt,
-			&event.DeletedAt,
-		)
-		if err != nil {
-			return nil, 0, err
-		}
-		events = append(events, event)
+	events, err := r.scanEvents(rows)
+	if err != nil {
+		return nil, 0, err
 	}
 	return events, total, nil
 }
@@ -260,14 +383,19 @@ func (r *PostgresEventRepository) List(ctx context.Context, filter *EventFilter,
 			args = append(args, filter.TenantID)
 			argIndex++
 		}
-		if filter.VenueID != "" {
-			conditions = append(conditions, fmt.Sprintf("venue_id = $%d", argIndex))
-			args = append(args, filter.VenueID)
-			argIndex++
-		}
 		if filter.Search != "" {
 			conditions = append(conditions, fmt.Sprintf("(name ILIKE $%d OR description ILIKE $%d)", argIndex, argIndex))
 			args = append(args, "%"+filter.Search+"%")
+			argIndex++
+		}
+		if filter.City != "" {
+			conditions = append(conditions, fmt.Sprintf("city = $%d", argIndex))
+			args = append(args, filter.City)
+			argIndex++
+		}
+		if filter.CategoryID != "" {
+			conditions = append(conditions, fmt.Sprintf("category_id = $%d", argIndex))
+			args = append(args, filter.CategoryID)
 			argIndex++
 		}
 	}
@@ -284,12 +412,11 @@ func (r *PostgresEventRepository) List(ctx context.Context, filter *EventFilter,
 
 	// Get events
 	query := fmt.Sprintf(`
-		SELECT id, name, slug, description, venue_id, start_time, end_time, status, tenant_id, created_at, updated_at, deleted_at
-		FROM events
+		SELECT %s FROM events
 		WHERE %s
 		ORDER BY created_at DESC
 		LIMIT $%d OFFSET $%d
-	`, whereClause, argIndex, argIndex+1)
+	`, eventColumns, whereClause, argIndex, argIndex+1)
 
 	args = append(args, limit, offset)
 
@@ -299,27 +426,9 @@ func (r *PostgresEventRepository) List(ctx context.Context, filter *EventFilter,
 	}
 	defer rows.Close()
 
-	var events []*domain.Event
-	for rows.Next() {
-		event := &domain.Event{}
-		err := rows.Scan(
-			&event.ID,
-			&event.Name,
-			&event.Slug,
-			&event.Description,
-			&event.VenueID,
-			&event.StartTime,
-			&event.EndTime,
-			&event.Status,
-			&event.TenantID,
-			&event.CreatedAt,
-			&event.UpdatedAt,
-			&event.DeletedAt,
-		)
-		if err != nil {
-			return nil, 0, err
-		}
-		events = append(events, event)
+	events, err := r.scanEvents(rows)
+	if err != nil {
+		return nil, 0, err
 	}
 	return events, total, nil
 }

@@ -67,7 +67,7 @@ func NewContainer(cfg *ContainerConfig) *Container {
 	// c.TicketTypeRepo = repository.NewPostgresTicketTypeRepository(c.DB.Pool())
 
 	// Initialize services
-	c.EventService = service.NewEventService(c.EventRepo, c.VenueRepo)
+	c.EventService = service.NewEventService(c.EventRepo)
 	c.ShowService = service.NewShowService(c.ShowRepo, c.EventRepo)
 	c.ShowZoneService = service.NewShowZoneService(c.ShowZoneRepo, c.ShowRepo)
 	// c.TicketService = service.NewTicketService(c.TicketTypeRepo, c.EventRepo)

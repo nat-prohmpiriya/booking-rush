@@ -163,7 +163,7 @@ func (r *CachedEventRepository) ListPublished(ctx context.Context, limit, offset
 // List lists events with filters and pagination (cached only for simple queries)
 func (r *CachedEventRepository) List(ctx context.Context, filter *EventFilter, limit, offset int) ([]*domain.Event, int, error) {
 	// Only cache simple queries without filters or with only status filter
-	if filter == nil || (filter.TenantID == "" && filter.VenueID == "" && filter.Search == "") {
+	if filter == nil || (filter.TenantID == "" && filter.City == "" && filter.CategoryID == "" && filter.Search == "") {
 		status := ""
 		if filter != nil {
 			status = filter.Status

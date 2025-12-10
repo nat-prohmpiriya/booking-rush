@@ -20,20 +20,17 @@ var (
 	ErrEventAlreadyExists = errors.New("event with this slug already exists")
 	ErrInvalidEventStatus = errors.New("invalid event status transition")
 	ErrUnauthorized       = errors.New("unauthorized to perform this action")
-	ErrVenueNotFound      = errors.New("venue not found")
 )
 
 // eventService implements EventService
 type eventService struct {
 	eventRepo repository.EventRepository
-	venueRepo repository.VenueRepository
 }
 
 // NewEventService creates a new EventService
-func NewEventService(eventRepo repository.EventRepository, venueRepo repository.VenueRepository) EventService {
+func NewEventService(eventRepo repository.EventRepository) EventService {
 	return &eventService{
 		eventRepo: eventRepo,
-		venueRepo: venueRepo,
 	}
 }
 
@@ -44,37 +41,54 @@ func (s *eventService) CreateEvent(ctx context.Context, req *dto.CreateEventRequ
 		return nil, errors.New(msg)
 	}
 
-	// Verify venue exists
-	venue, err := s.venueRepo.GetByID(ctx, req.VenueID)
-	if err != nil {
-		return nil, err
-	}
-	if venue == nil {
-		return nil, ErrVenueNotFound
-	}
-
 	// Generate slug from name
 	slug := generateSlug(req.Name)
 
 	// Ensure slug is unique
-	slug, err = s.ensureUniqueSlug(ctx, slug)
+	slug, err := s.ensureUniqueSlug(ctx, slug)
 	if err != nil {
 		return nil, err
 	}
 
 	now := time.Now()
+	maxTickets := 10
+	if req.MaxTicketsPerUser > 0 {
+		maxTickets = req.MaxTicketsPerUser
+	}
+
 	event := &domain.Event{
-		ID:          uuid.New().String(),
-		Name:        req.Name,
-		Slug:        slug,
-		Description: req.Description,
-		VenueID:     req.VenueID,
-		StartTime:   req.StartTime,
-		EndTime:     req.EndTime,
-		Status:      domain.EventStatusDraft,
-		TenantID:    req.TenantID,
-		CreatedAt:   now,
-		UpdatedAt:   now,
+		ID:                uuid.New().String(),
+		TenantID:          req.TenantID,
+		OrganizerID:       req.OrganizerID,
+		CategoryID:        req.CategoryID,
+		Name:              req.Name,
+		Slug:              slug,
+		Description:       req.Description,
+		ShortDescription:  req.ShortDescription,
+		PosterURL:         req.PosterURL,
+		BannerURL:         req.BannerURL,
+		Gallery:           req.Gallery,
+		VenueName:         req.VenueName,
+		VenueAddress:      req.VenueAddress,
+		City:              req.City,
+		Country:           req.Country,
+		Latitude:          req.Latitude,
+		Longitude:         req.Longitude,
+		MaxTicketsPerUser: maxTickets,
+		BookingStartAt:    req.BookingStartAt,
+		BookingEndAt:      req.BookingEndAt,
+		Status:            domain.EventStatusDraft,
+		IsFeatured:        false,
+		IsPublic:          true,
+		MetaTitle:         req.MetaTitle,
+		MetaDescription:   req.MetaDescription,
+		Settings:          "{}",
+		CreatedAt:         now,
+		UpdatedAt:         now,
+	}
+
+	if event.Gallery == nil {
+		event.Gallery = []string{}
 	}
 
 	if err := s.eventRepo.Create(ctx, event); err != nil {
@@ -113,13 +127,25 @@ func (s *eventService) ListEvents(ctx context.Context, filter *dto.EventListFilt
 	filter.SetDefaults()
 
 	repoFilter := &repository.EventFilter{
-		Status:   filter.Status,
-		TenantID: filter.TenantID,
-		VenueID:  filter.VenueID,
-		Search:   filter.Search,
+		Status:     filter.Status,
+		TenantID:   filter.TenantID,
+		CategoryID: filter.CategoryID,
+		City:       filter.City,
+		Search:     filter.Search,
 	}
 
 	return s.eventRepo.List(ctx, repoFilter, filter.Limit, filter.Offset)
+}
+
+// ListPublishedEvents lists all published public events
+func (s *eventService) ListPublishedEvents(ctx context.Context, limit, offset int) ([]*domain.Event, int, error) {
+	if limit <= 0 || limit > 100 {
+		limit = 20
+	}
+	if offset < 0 {
+		offset = 0
+	}
+	return s.eventRepo.ListPublished(ctx, limit, offset)
 }
 
 // UpdateEvent updates an event
@@ -152,11 +178,59 @@ func (s *eventService) UpdateEvent(ctx context.Context, id string, req *dto.Upda
 	if req.Description != "" {
 		event.Description = req.Description
 	}
-	if !req.StartTime.IsZero() {
-		event.StartTime = req.StartTime
+	if req.ShortDescription != "" {
+		event.ShortDescription = req.ShortDescription
 	}
-	if !req.EndTime.IsZero() {
-		event.EndTime = req.EndTime
+	if req.CategoryID != nil {
+		event.CategoryID = req.CategoryID
+	}
+	if req.PosterURL != "" {
+		event.PosterURL = req.PosterURL
+	}
+	if req.BannerURL != "" {
+		event.BannerURL = req.BannerURL
+	}
+	if req.Gallery != nil {
+		event.Gallery = req.Gallery
+	}
+	if req.VenueName != "" {
+		event.VenueName = req.VenueName
+	}
+	if req.VenueAddress != "" {
+		event.VenueAddress = req.VenueAddress
+	}
+	if req.City != "" {
+		event.City = req.City
+	}
+	if req.Country != "" {
+		event.Country = req.Country
+	}
+	if req.Latitude != nil {
+		event.Latitude = req.Latitude
+	}
+	if req.Longitude != nil {
+		event.Longitude = req.Longitude
+	}
+	if req.MaxTicketsPerUser != nil {
+		event.MaxTicketsPerUser = *req.MaxTicketsPerUser
+	}
+	if req.BookingStartAt != nil {
+		event.BookingStartAt = req.BookingStartAt
+	}
+	if req.BookingEndAt != nil {
+		event.BookingEndAt = req.BookingEndAt
+	}
+	if req.IsFeatured != nil {
+		event.IsFeatured = *req.IsFeatured
+	}
+	if req.IsPublic != nil {
+		event.IsPublic = *req.IsPublic
+	}
+	if req.MetaTitle != "" {
+		event.MetaTitle = req.MetaTitle
+	}
+	if req.MetaDescription != "" {
+		event.MetaDescription = req.MetaDescription
 	}
 
 	if err := s.eventRepo.Update(ctx, event); err != nil {
@@ -196,6 +270,9 @@ func (s *eventService) PublishEvent(ctx context.Context, id string) (*domain.Eve
 	}
 
 	event.Status = domain.EventStatusPublished
+	now := time.Now()
+	event.PublishedAt = &now
+
 	if err := s.eventRepo.Update(ctx, event); err != nil {
 		return nil, err
 	}

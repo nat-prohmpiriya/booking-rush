@@ -378,6 +378,30 @@ func ConfigFromEnv(authURL, ticketURL, bookingURL, paymentURL, jwtSecret string)
 				RequireAuth:    true,
 				AllowedMethods: []string{"POST", "PUT", "DELETE", "PATCH"},
 			},
+			// Shows - public GET
+			{
+				PathPrefix:  "/api/v1/shows",
+				StripPrefix: "",
+				Service: ServiceConfig{
+					Name:    "ticket-service",
+					BaseURL: ticketURL,
+					Timeout: 15 * time.Second,
+				},
+				RequireAuth:    false,
+				AllowedMethods: []string{"GET"},
+			},
+			// Shows - protected writes
+			{
+				PathPrefix:  "/api/v1/shows",
+				StripPrefix: "",
+				Service: ServiceConfig{
+					Name:    "ticket-service",
+					BaseURL: ticketURL,
+					Timeout: 15 * time.Second,
+				},
+				RequireAuth:    true,
+				AllowedMethods: []string{"POST", "PUT", "DELETE", "PATCH"},
+			},
 			// Zones - public GET
 			{
 				PathPrefix:  "/api/v1/zones",

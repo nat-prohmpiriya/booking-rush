@@ -46,17 +46,50 @@ func (s *showService) CreateShow(ctx context.Context, req *dto.CreateShowRequest
 		return nil, ErrEventNotFound
 	}
 
+	// Parse date and times from string
+	showDate, err := time.Parse("2006-01-02", req.ShowDate)
+	if err != nil {
+		return nil, errors.New("invalid show_date format, expected YYYY-MM-DD")
+	}
+	startTime, err := time.Parse("15:04:05Z07:00", req.StartTime)
+	if err != nil {
+		// Try without timezone
+		startTime, err = time.Parse("15:04:05", req.StartTime)
+		if err != nil {
+			return nil, errors.New("invalid start_time format")
+		}
+	}
+	var endTime time.Time
+	if req.EndTime != "" {
+		endTime, err = time.Parse("15:04:05Z07:00", req.EndTime)
+		if err != nil {
+			endTime, _ = time.Parse("15:04:05", req.EndTime)
+		}
+	}
+	var doorsOpenAt *time.Time
+	if req.DoorsOpenAt != "" {
+		t, err := time.Parse("15:04:05Z07:00", req.DoorsOpenAt)
+		if err != nil {
+			t, _ = time.Parse("15:04:05", req.DoorsOpenAt)
+		}
+		doorsOpenAt = &t
+	}
+
 	// Create show
 	now := time.Now()
 	show := &domain.Show{
-		ID:        uuid.New().String(),
-		EventID:   req.EventID,
-		Name:      req.Name,
-		StartTime: req.StartTime,
-		EndTime:   req.EndTime,
-		Status:    domain.ShowStatusScheduled,
-		CreatedAt: now,
-		UpdatedAt: now,
+		ID:          uuid.New().String(),
+		EventID:     req.EventID,
+		Name:        req.Name,
+		ShowDate:    showDate,
+		StartTime:   startTime,
+		EndTime:     endTime,
+		DoorsOpenAt: doorsOpenAt,
+		Status:      domain.ShowStatusScheduled,
+		SaleStartAt: req.SaleStartAt,
+		SaleEndAt:   req.SaleEndAt,
+		CreatedAt:   now,
+		UpdatedAt:   now,
 	}
 
 	if err := s.showRepo.Create(ctx, show); err != nil {
@@ -114,14 +147,41 @@ func (s *showService) UpdateShow(ctx context.Context, id string, req *dto.Update
 	if req.Name != "" {
 		show.Name = req.Name
 	}
-	if !req.StartTime.IsZero() {
-		show.StartTime = req.StartTime
+	if req.ShowDate != "" {
+		showDate, err := time.Parse("2006-01-02", req.ShowDate)
+		if err == nil {
+			show.ShowDate = showDate
+		}
 	}
-	if !req.EndTime.IsZero() {
-		show.EndTime = req.EndTime
+	if req.StartTime != "" {
+		startTime, err := time.Parse("15:04:05Z07:00", req.StartTime)
+		if err != nil {
+			startTime, _ = time.Parse("15:04:05", req.StartTime)
+		}
+		show.StartTime = startTime
+	}
+	if req.EndTime != "" {
+		endTime, err := time.Parse("15:04:05Z07:00", req.EndTime)
+		if err != nil {
+			endTime, _ = time.Parse("15:04:05", req.EndTime)
+		}
+		show.EndTime = endTime
+	}
+	if req.DoorsOpenAt != "" {
+		t, err := time.Parse("15:04:05Z07:00", req.DoorsOpenAt)
+		if err != nil {
+			t, _ = time.Parse("15:04:05", req.DoorsOpenAt)
+		}
+		show.DoorsOpenAt = &t
 	}
 	if req.Status != "" {
 		show.Status = req.Status
+	}
+	if req.SaleStartAt != nil {
+		show.SaleStartAt = req.SaleStartAt
+	}
+	if req.SaleEndAt != nil {
+		show.SaleEndAt = req.SaleEndAt
 	}
 
 	if err := s.showRepo.Update(ctx, show); err != nil {

@@ -52,7 +52,7 @@ func (h *ShowHandler) ListByEvent(c *gin.Context) {
 
 	shows, total, err := h.showService.ListShowsByEvent(c.Request.Context(), event.ID, &filter)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, response.InternalError("Failed to list shows"))
+		c.JSON(http.StatusInternalServerError, response.InternalError("Failed to list shows: "+err.Error()))
 		return
 	}
 
@@ -177,14 +177,34 @@ func (h *ShowHandler) Delete(c *gin.Context) {
 
 // toShowResponse converts a domain show to response DTO
 func toShowResponse(show *domain.Show) *dto.ShowResponse {
-	return &dto.ShowResponse{
-		ID:        show.ID,
-		EventID:   show.EventID,
-		Name:      show.Name,
-		StartTime: show.StartTime.Format("2006-01-02T15:04:05Z07:00"),
-		EndTime:   show.EndTime.Format("2006-01-02T15:04:05Z07:00"),
-		Status:    show.Status,
-		CreatedAt: show.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
-		UpdatedAt: show.UpdatedAt.Format("2006-01-02T15:04:05Z07:00"),
+	// Return full ISO timestamps by combining show_date with time
+	resp := &dto.ShowResponse{
+		ID:            show.ID,
+		EventID:       show.EventID,
+		Name:          show.Name,
+		ShowDate:      show.ShowDate.Format("2006-01-02"),
+		StartTime:     show.StartTime.Format("2006-01-02T15:04:05Z07:00"),
+		EndTime:       show.EndTime.Format("2006-01-02T15:04:05Z07:00"),
+		Status:        show.Status,
+		TotalCapacity: show.TotalCapacity,
+		ReservedCount: show.ReservedCount,
+		SoldCount:     show.SoldCount,
+		CreatedAt:     show.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
+		UpdatedAt:     show.UpdatedAt.Format("2006-01-02T15:04:05Z07:00"),
 	}
+
+	if show.DoorsOpenAt != nil {
+		t := show.DoorsOpenAt.Format("2006-01-02T15:04:05Z07:00")
+		resp.DoorsOpenAt = &t
+	}
+	if show.SaleStartAt != nil {
+		t := show.SaleStartAt.Format("2006-01-02T15:04:05Z07:00")
+		resp.SaleStartAt = &t
+	}
+	if show.SaleEndAt != nil {
+		t := show.SaleEndAt.Format("2006-01-02T15:04:05Z07:00")
+		resp.SaleEndAt = &t
+	}
+
+	return resp
 }

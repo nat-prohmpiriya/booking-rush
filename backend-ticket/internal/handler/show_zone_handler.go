@@ -170,16 +170,34 @@ func (h *ShowZoneHandler) Delete(c *gin.Context) {
 
 // toShowZoneResponse converts a domain show zone to response DTO
 func toShowZoneResponse(zone *domain.ShowZone) *dto.ShowZoneResponse {
-	return &dto.ShowZoneResponse{
+	resp := &dto.ShowZoneResponse{
 		ID:             zone.ID,
 		ShowID:         zone.ShowID,
 		Name:           zone.Name,
+		Description:    zone.Description,
+		Color:          zone.Color,
 		Price:          zone.Price,
+		Currency:       zone.Currency,
 		TotalSeats:     zone.TotalSeats,
 		AvailableSeats: zone.AvailableSeats,
-		Description:    zone.Description,
+		ReservedSeats:  zone.ReservedSeats,
+		SoldSeats:      zone.SoldSeats,
+		MinPerOrder:    zone.MinPerOrder,
+		MaxPerOrder:    zone.MaxPerOrder,
+		IsActive:       zone.IsActive,
 		SortOrder:      zone.SortOrder,
 		CreatedAt:      zone.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
 		UpdatedAt:      zone.UpdatedAt.Format("2006-01-02T15:04:05Z07:00"),
 	}
+
+	if zone.SaleStartAt != nil {
+		t := zone.SaleStartAt.Format("2006-01-02T15:04:05Z07:00")
+		resp.SaleStartAt = &t
+	}
+	if zone.SaleEndAt != nil {
+		t := zone.SaleEndAt.Format("2006-01-02T15:04:05Z07:00")
+		resp.SaleEndAt = &t
+	}
+
+	return resp
 }

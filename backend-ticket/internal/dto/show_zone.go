@@ -52,11 +52,20 @@ type ShowZoneResponse struct {
 	ID             string  `json:"id"`
 	ShowID         string  `json:"show_id"`
 	Name           string  `json:"name"`
+	Description    string  `json:"description"`
+	Color          string  `json:"color"`
 	Price          float64 `json:"price"`
+	Currency       string  `json:"currency"`
 	TotalSeats     int     `json:"total_seats"`
 	AvailableSeats int     `json:"available_seats"`
-	Description    string  `json:"description"`
+	ReservedSeats  int     `json:"reserved_seats"`
+	SoldSeats      int     `json:"sold_seats"`
+	MinPerOrder    int     `json:"min_per_order"`
+	MaxPerOrder    int     `json:"max_per_order"`
+	IsActive       bool    `json:"is_active"`
 	SortOrder      int     `json:"sort_order"`
+	SaleStartAt    *string `json:"sale_start_at,omitempty"`
+	SaleEndAt      *string `json:"sale_end_at,omitempty"`
 	CreatedAt      string  `json:"created_at"`
 	UpdatedAt      string  `json:"updated_at"`
 }

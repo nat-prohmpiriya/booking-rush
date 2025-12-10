@@ -3,6 +3,7 @@ package handler
 import (
 	"errors"
 	"net/http"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"github.com/prohmpiriya/booking-rush-10k-rps/backend-ticket/internal/domain"
@@ -24,15 +25,23 @@ func NewEventHandler(eventService service.EventService) *EventHandler {
 	}
 }
 
-// List handles GET /events - lists events with pagination and filters
+// List handles GET /events - lists published events for public
 func (h *EventHandler) List(c *gin.Context) {
-	var filter dto.EventListFilter
-	if err := c.ShouldBindQuery(&filter); err != nil {
-		c.JSON(http.StatusBadRequest, response.BadRequest("Invalid query parameters"))
-		return
+	// Parse pagination params
+	limit := 20
+	offset := 0
+	if l := c.Query("limit"); l != "" {
+		if parsed, err := strconv.Atoi(l); err == nil && parsed > 0 && parsed <= 100 {
+			limit = parsed
+		}
+	}
+	if o := c.Query("offset"); o != "" {
+		if parsed, err := strconv.Atoi(o); err == nil && parsed >= 0 {
+			offset = parsed
+		}
 	}
 
-	events, total, err := h.eventService.ListEvents(c.Request.Context(), &filter)
+	events, total, err := h.eventService.ListPublishedEvents(c.Request.Context(), limit, offset)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, response.InternalError("Failed to list events"))
 		return
@@ -43,8 +52,7 @@ func (h *EventHandler) List(c *gin.Context) {
 		eventResponses[i] = toEventResponse(event)
 	}
 
-	filter.SetDefaults()
-	c.JSON(http.StatusOK, response.Paginated(eventResponses, filter.Offset/filter.Limit+1, filter.Limit, int64(total)))
+	c.JSON(http.StatusOK, response.Paginated(eventResponses, offset/limit+1, limit, int64(total)))
 }
 
 // GetBySlug handles GET /events/:slug - retrieves an event by slug
@@ -97,13 +105,20 @@ func (h *EventHandler) Create(c *gin.Context) {
 		return
 	}
 
-	// Get tenant ID from JWT context
+	// Get tenant ID and user ID from JWT context
 	tenantID, ok := middleware.GetTenantID(c)
 	if !ok || tenantID == "" {
 		c.JSON(http.StatusUnauthorized, response.Unauthorized("Tenant ID not found in token"))
 		return
 	}
 	req.TenantID = tenantID
+
+	userID, ok := middleware.GetUserID(c)
+	if !ok || userID == "" {
+		c.JSON(http.StatusUnauthorized, response.Unauthorized("User ID not found in token"))
+		return
+	}
+	req.OrganizerID = userID
 
 	// Validate request
 	if valid, msg := req.Validate(); !valid {
@@ -113,10 +128,6 @@ func (h *EventHandler) Create(c *gin.Context) {
 
 	event, err := h.eventService.CreateEvent(c.Request.Context(), &req)
 	if err != nil {
-		if errors.Is(err, service.ErrVenueNotFound) {
-			c.JSON(http.StatusBadRequest, response.BadRequest("Venue not found"))
-			return
-		}
 		if errors.Is(err, service.ErrEventAlreadyExists) {
 			c.JSON(http.StatusConflict, response.Error(response.ErrCodeConflict, "Event with this slug already exists"))
 			return
@@ -209,17 +220,49 @@ func (h *EventHandler) Publish(c *gin.Context) {
 
 // toEventResponse converts a domain event to response DTO
 func toEventResponse(event *domain.Event) *dto.EventResponse {
-	return &dto.EventResponse{
-		ID:          event.ID,
-		Name:        event.Name,
-		Slug:        event.Slug,
-		Description: event.Description,
-		VenueID:     event.VenueID,
-		StartTime:   event.StartTime.Format("2006-01-02T15:04:05Z07:00"),
-		EndTime:     event.EndTime.Format("2006-01-02T15:04:05Z07:00"),
-		Status:      event.Status,
-		TenantID:    event.TenantID,
-		CreatedAt:   event.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
-		UpdatedAt:   event.UpdatedAt.Format("2006-01-02T15:04:05Z07:00"),
+	resp := &dto.EventResponse{
+		ID:                event.ID,
+		TenantID:          event.TenantID,
+		OrganizerID:       event.OrganizerID,
+		CategoryID:        event.CategoryID,
+		Name:              event.Name,
+		Slug:              event.Slug,
+		Description:       event.Description,
+		ShortDescription:  event.ShortDescription,
+		PosterURL:         event.PosterURL,
+		BannerURL:         event.BannerURL,
+		Gallery:           event.Gallery,
+		VenueName:         event.VenueName,
+		VenueAddress:      event.VenueAddress,
+		City:              event.City,
+		Country:           event.Country,
+		Latitude:          event.Latitude,
+		Longitude:         event.Longitude,
+		MaxTicketsPerUser: event.MaxTicketsPerUser,
+		Status:            event.Status,
+		IsFeatured:        event.IsFeatured,
+		IsPublic:          event.IsPublic,
+		MetaTitle:         event.MetaTitle,
+		MetaDescription:   event.MetaDescription,
+		CreatedAt:         event.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
+		UpdatedAt:         event.UpdatedAt.Format("2006-01-02T15:04:05Z07:00"),
 	}
+
+	if event.BookingStartAt != nil {
+		t := event.BookingStartAt.Format("2006-01-02T15:04:05Z07:00")
+		resp.BookingStartAt = &t
+	}
+	if event.BookingEndAt != nil {
+		t := event.BookingEndAt.Format("2006-01-02T15:04:05Z07:00")
+		resp.BookingEndAt = &t
+	}
+	if event.PublishedAt != nil {
+		t := event.PublishedAt.Format("2006-01-02T15:04:05Z07:00")
+		resp.PublishedAt = &t
+	}
+	if resp.Gallery == nil {
+		resp.Gallery = []string{}
+	}
+
+	return resp
 }

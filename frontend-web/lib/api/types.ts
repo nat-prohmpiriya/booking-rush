@@ -11,12 +11,16 @@ export interface ApiError {
   message?: string
 }
 
+export interface PaginationMeta {
+  page: number
+  per_page: number
+  total: number
+  total_pages: number
+}
+
 export interface PaginatedResponse<T> {
   data: T[]
-  page: number
-  page_size: number
-  total_items: number
-  total_pages: number
+  meta: PaginationMeta
 }
 
 // Auth types
@@ -53,24 +57,36 @@ export interface UserResponse {
 // Event types
 export interface EventResponse {
   id: string
+  tenant_id: string
+  organizer_id: string
+  category_id?: string
   name: string
   slug: string
   description: string
-  venue_id: string
-  start_time: string
-  end_time: string
+  short_description: string
+  poster_url: string
+  banner_url: string
+  gallery: string[]
+  venue_name: string
+  venue_address: string
+  city: string
+  country: string
+  latitude?: number
+  longitude?: number
+  max_tickets_per_user: number
+  booking_start_at?: string
+  booking_end_at?: string
   status: string
-  tenant_id: string
+  is_featured: boolean
+  is_public: boolean
+  meta_title: string
+  meta_description: string
+  published_at?: string
   created_at: string
   updated_at: string
 }
 
-export interface EventListResponse {
-  events: EventResponse[]
-  total: number
-  limit: number
-  offset: number
-}
+export interface EventListResponse extends PaginatedResponse<EventResponse> {}
 
 export interface EventListFilter {
   status?: string
@@ -85,40 +101,46 @@ export interface ShowResponse {
   id: string
   event_id: string
   name: string
+  show_date: string
   start_time: string
   end_time: string
+  doors_open_at?: string
   status: string
+  sale_start_at?: string
+  sale_end_at?: string
+  total_capacity: number
+  reserved_count: number
+  sold_count: number
   created_at: string
   updated_at: string
 }
 
-export interface ShowListResponse {
-  shows: ShowResponse[]
-  total: number
-  limit: number
-  offset: number
-}
+export interface ShowListResponse extends PaginatedResponse<ShowResponse> {}
 
 // Zone types
 export interface ShowZoneResponse {
   id: string
   show_id: string
   name: string
+  description: string
+  color: string
   price: number
+  currency: string
   total_seats: number
   available_seats: number
-  description: string
+  reserved_seats: number
+  sold_seats: number
+  min_per_order: number
+  max_per_order: number
+  is_active: boolean
   sort_order: number
+  sale_start_at?: string
+  sale_end_at?: string
   created_at: string
   updated_at: string
 }
 
-export interface ShowZoneListResponse {
-  zones: ShowZoneResponse[]
-  total: number
-  limit: number
-  offset: number
-}
+export interface ShowZoneListResponse extends PaginatedResponse<ShowZoneResponse> {}
 
 // Booking types
 export interface ReserveSeatsRequest {

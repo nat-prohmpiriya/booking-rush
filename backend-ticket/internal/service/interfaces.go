@@ -17,6 +17,8 @@ type EventService interface {
 	GetEventBySlug(ctx context.Context, slug string) (*domain.Event, error)
 	// ListEvents lists events with filters and pagination
 	ListEvents(ctx context.Context, filter *dto.EventListFilter) ([]*domain.Event, int, error)
+	// ListPublishedEvents lists all published public events
+	ListPublishedEvents(ctx context.Context, limit, offset int) ([]*domain.Event, int, error)
 	// UpdateEvent updates an event
 	UpdateEvent(ctx context.Context, id string, req *dto.UpdateEventRequest) (*domain.Event, error)
 	// DeleteEvent soft deletes an event

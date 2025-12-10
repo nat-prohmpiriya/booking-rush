@@ -30,10 +30,11 @@ type EventRepository interface {
 
 // EventFilter contains filter options for listing events
 type EventFilter struct {
-	Status   string
-	TenantID string
-	VenueID  string
-	Search   string
+	Status     string
+	TenantID   string
+	CategoryID string
+	City       string
+	Search     string
 }
 
 // VenueRepository defines the interface for venue data access

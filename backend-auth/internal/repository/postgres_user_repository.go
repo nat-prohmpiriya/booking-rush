@@ -26,13 +26,19 @@ func (r *PostgresUserRepository) Create(ctx context.Context, user *domain.User) 
 		INSERT INTO users (id, email, password_hash, name, role, tenant_id, is_active, created_at, updated_at)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 	`
+	// Convert empty tenant_id to nil for NULL in database
+	var tenantID interface{}
+	if user.TenantID != "" {
+		tenantID = user.TenantID
+	}
+
 	_, err := r.pool.Exec(ctx, query,
 		user.ID,
 		user.Email,
 		user.PasswordHash,
 		user.Name,
 		user.Role,
-		user.TenantID,
+		tenantID,
 		user.IsActive,
 		user.CreatedAt,
 		user.UpdatedAt,
@@ -43,7 +49,7 @@ func (r *PostgresUserRepository) Create(ctx context.Context, user *domain.User) 
 // GetByID retrieves a user by ID
 func (r *PostgresUserRepository) GetByID(ctx context.Context, id string) (*domain.User, error) {
 	query := `
-		SELECT id, email, password_hash, name, role, tenant_id, is_active, created_at, updated_at
+		SELECT id, email, password_hash, name, role, COALESCE(tenant_id::text, '') as tenant_id, is_active, created_at, updated_at
 		FROM users
 		WHERE id = $1
 	`
@@ -71,7 +77,7 @@ func (r *PostgresUserRepository) GetByID(ctx context.Context, id string) (*domai
 // GetByEmail retrieves a user by email
 func (r *PostgresUserRepository) GetByEmail(ctx context.Context, email string) (*domain.User, error) {
 	query := `
-		SELECT id, email, password_hash, name, role, tenant_id, is_active, created_at, updated_at
+		SELECT id, email, password_hash, name, role, COALESCE(tenant_id::text, '') as tenant_id, is_active, created_at, updated_at
 		FROM users
 		WHERE email = $1
 	`

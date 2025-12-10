@@ -106,7 +106,7 @@ func (s *authService) Register(ctx context.Context, req *dto.RegisterRequest) (*
 		Email:        req.Email,
 		PasswordHash: string(hashedPassword),
 		Name:         req.Name,
-		Role:         domain.RoleUser,
+		Role:         domain.RoleCustomer,
 		IsActive:     true,
 		CreatedAt:    now,
 		UpdatedAt:    now,

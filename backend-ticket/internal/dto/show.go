@@ -4,58 +4,61 @@ import "time"
 
 // CreateShowRequest represents the request to create a new show
 type CreateShowRequest struct {
-	EventID   string    `json:"-"` // Set from URL param
-	Name      string    `json:"name" binding:"required,min=1,max=200"`
-	StartTime time.Time `json:"start_time" binding:"required"`
-	EndTime   time.Time `json:"end_time" binding:"required"`
+	EventID     string     `json:"-"` // Set from URL param
+	Name        string     `json:"name" binding:"max=255"`
+	ShowDate    string     `json:"show_date" binding:"required"` // Format: 2006-01-02
+	StartTime   string     `json:"start_time" binding:"required"` // Format: 15:04:05+07:00
+	EndTime     string     `json:"end_time"`                      // Format: 15:04:05+07:00
+	DoorsOpenAt string     `json:"doors_open_at"`                 // Format: 15:04:05+07:00
+	SaleStartAt *time.Time `json:"sale_start_at"`
+	SaleEndAt   *time.Time `json:"sale_end_at"`
 }
 
 // Validate validates the CreateShowRequest
 func (r *CreateShowRequest) Validate() (bool, string) {
-	if r.Name == "" {
-		return false, "Show name is required"
+	if r.ShowDate == "" {
+		return false, "Show date is required"
 	}
-	if r.StartTime.IsZero() {
+	if r.StartTime == "" {
 		return false, "Start time is required"
-	}
-	if r.EndTime.IsZero() {
-		return false, "End time is required"
-	}
-	if r.EndTime.Before(r.StartTime) {
-		return false, "End time must be after start time"
 	}
 	return true, ""
 }
 
 // UpdateShowRequest represents the request to update a show
 type UpdateShowRequest struct {
-	Name      string    `json:"name" binding:"omitempty,min=1,max=200"`
-	StartTime time.Time `json:"start_time"`
-	EndTime   time.Time `json:"end_time"`
-	Status    string    `json:"status"`
+	Name        string     `json:"name" binding:"omitempty,max=255"`
+	ShowDate    string     `json:"show_date"`
+	StartTime   string     `json:"start_time"`
+	EndTime     string     `json:"end_time"`
+	DoorsOpenAt string     `json:"doors_open_at"`
+	Status      string     `json:"status"`
+	SaleStartAt *time.Time `json:"sale_start_at"`
+	SaleEndAt   *time.Time `json:"sale_end_at"`
 }
 
 // Validate validates the UpdateShowRequest
 func (r *UpdateShowRequest) Validate() (bool, string) {
-	if r.Name == "" && r.StartTime.IsZero() && r.EndTime.IsZero() && r.Status == "" {
-		return false, "At least one field must be provided for update"
-	}
-	if !r.StartTime.IsZero() && !r.EndTime.IsZero() && r.EndTime.Before(r.StartTime) {
-		return false, "End time must be after start time"
-	}
 	return true, ""
 }
 
 // ShowResponse represents the response for a show
 type ShowResponse struct {
-	ID        string `json:"id"`
-	EventID   string `json:"event_id"`
-	Name      string `json:"name"`
-	StartTime string `json:"start_time"`
-	EndTime   string `json:"end_time"`
-	Status    string `json:"status"`
-	CreatedAt string `json:"created_at"`
-	UpdatedAt string `json:"updated_at"`
+	ID            string  `json:"id"`
+	EventID       string  `json:"event_id"`
+	Name          string  `json:"name"`
+	ShowDate      string  `json:"show_date"`
+	StartTime     string  `json:"start_time"`
+	EndTime       string  `json:"end_time"`
+	DoorsOpenAt   *string `json:"doors_open_at,omitempty"`
+	Status        string  `json:"status"`
+	SaleStartAt   *string `json:"sale_start_at,omitempty"`
+	SaleEndAt     *string `json:"sale_end_at,omitempty"`
+	TotalCapacity int     `json:"total_capacity"`
+	ReservedCount int     `json:"reserved_count"`
+	SoldCount     int     `json:"sold_count"`
+	CreatedAt     string  `json:"created_at"`
+	UpdatedAt     string  `json:"updated_at"`
 }
 
 // ShowListResponse represents a list of shows

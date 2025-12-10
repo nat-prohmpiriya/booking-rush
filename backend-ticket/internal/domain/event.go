@@ -4,18 +4,36 @@ import "time"
 
 // Event represents an event in the system
 type Event struct {
-	ID          string     `json:"id"`
-	Name        string     `json:"name"`
-	Slug        string     `json:"slug"`
-	Description string     `json:"description"`
-	VenueID     string     `json:"venue_id"`
-	StartTime   time.Time  `json:"start_time"`
-	EndTime     time.Time  `json:"end_time"`
-	Status      string     `json:"status"` // draft, published, cancelled, completed
-	TenantID    string     `json:"tenant_id"`
-	CreatedAt   time.Time  `json:"created_at"`
-	UpdatedAt   time.Time  `json:"updated_at"`
-	DeletedAt   *time.Time `json:"deleted_at,omitempty"`
+	ID               string     `json:"id"`
+	TenantID         string     `json:"tenant_id"`
+	OrganizerID      string     `json:"organizer_id"`
+	CategoryID       *string    `json:"category_id,omitempty"`
+	Name             string     `json:"name"`
+	Slug             string     `json:"slug"`
+	Description      string     `json:"description"`
+	ShortDescription string     `json:"short_description"`
+	PosterURL        string     `json:"poster_url"`
+	BannerURL        string     `json:"banner_url"`
+	Gallery          []string   `json:"gallery"`
+	VenueName        string     `json:"venue_name"`
+	VenueAddress     string     `json:"venue_address"`
+	City             string     `json:"city"`
+	Country          string     `json:"country"`
+	Latitude         *float64   `json:"latitude,omitempty"`
+	Longitude        *float64   `json:"longitude,omitempty"`
+	MaxTicketsPerUser int       `json:"max_tickets_per_user"`
+	BookingStartAt   *time.Time `json:"booking_start_at,omitempty"`
+	BookingEndAt     *time.Time `json:"booking_end_at,omitempty"`
+	Status           string     `json:"status"` // draft, published, cancelled, completed
+	IsFeatured       bool       `json:"is_featured"`
+	IsPublic         bool       `json:"is_public"`
+	MetaTitle        string     `json:"meta_title"`
+	MetaDescription  string     `json:"meta_description"`
+	Settings         string     `json:"settings"` // JSON string
+	PublishedAt      *time.Time `json:"published_at,omitempty"`
+	CreatedAt        time.Time  `json:"created_at"`
+	UpdatedAt        time.Time  `json:"updated_at"`
+	DeletedAt        *time.Time `json:"deleted_at,omitempty"`
 }
 
 // EventStatus constants
@@ -107,36 +125,53 @@ func (t *TicketType) IsAvailable() bool {
 
 // Show represents a specific showing/performance of an event
 type Show struct {
-	ID        string     `json:"id"`
-	EventID   string     `json:"event_id"`
-	Name      string     `json:"name"`      // e.g. "Evening Show", "Matinee"
-	StartTime time.Time  `json:"start_time"`
-	EndTime   time.Time  `json:"end_time"`
-	Status    string     `json:"status"` // scheduled, ongoing, completed, cancelled
-	CreatedAt time.Time  `json:"created_at"`
-	UpdatedAt time.Time  `json:"updated_at"`
-	DeletedAt *time.Time `json:"deleted_at,omitempty"`
+	ID            string     `json:"id"`
+	EventID       string     `json:"event_id"`
+	Name          string     `json:"name"`           // e.g. "Evening Show", "Matinee"
+	ShowDate      time.Time  `json:"show_date"`      // Date of the show
+	StartTime     time.Time  `json:"start_time"`     // Start time (stored as timetz in DB)
+	EndTime       time.Time  `json:"end_time"`       // End time (stored as timetz in DB)
+	DoorsOpenAt   *time.Time `json:"doors_open_at"`  // When doors open
+	Status        string     `json:"status"`         // scheduled, on_sale, sold_out, cancelled, completed
+	SaleStartAt   *time.Time `json:"sale_start_at"`  // When ticket sale starts
+	SaleEndAt     *time.Time `json:"sale_end_at"`    // When ticket sale ends
+	TotalCapacity int        `json:"total_capacity"` // Total capacity
+	ReservedCount int        `json:"reserved_count"` // Reserved seats count
+	SoldCount     int        `json:"sold_count"`     // Sold seats count
+	CreatedAt     time.Time  `json:"created_at"`
+	UpdatedAt     time.Time  `json:"updated_at"`
+	DeletedAt     *time.Time `json:"deleted_at,omitempty"`
 }
 
-// ShowStatus constants
+// ShowStatus constants (matches show_status enum in DB)
 const (
 	ShowStatusScheduled = "scheduled"
-	ShowStatusOngoing   = "ongoing"
-	ShowStatusCompleted = "completed"
+	ShowStatusOnSale    = "on_sale"
+	ShowStatusSoldOut   = "sold_out"
 	ShowStatusCancelled = "cancelled"
+	ShowStatusCompleted = "completed"
 )
 
-// ShowZone represents a zone/section for a specific show
+// ShowZone represents a zone/section for a specific show (maps to seat_zones table)
 // This allows different pricing and availability per show
 type ShowZone struct {
 	ID             string     `json:"id"`
 	ShowID         string     `json:"show_id"`
-	Name           string     `json:"name"`           // e.g. "VIP", "Standard", "Standing"
-	Price          float64    `json:"price"`          // Price per ticket in this zone
-	TotalSeats     int        `json:"total_seats"`    // Total seats in this zone
-	AvailableSeats int        `json:"available_seats"` // Seats still available (cached from Redis)
+	Name           string     `json:"name"`            // e.g. "VIP", "Standard", "Standing"
 	Description    string     `json:"description"`
-	SortOrder      int        `json:"sort_order"`     // Display order
+	Color          string     `json:"color"`           // Color code for UI (e.g. "#FFD700")
+	Price          float64    `json:"price"`           // Price per ticket in this zone
+	Currency       string     `json:"currency"`        // Currency code (default: THB)
+	TotalSeats     int        `json:"total_seats"`     // Total seats in this zone
+	AvailableSeats int        `json:"available_seats"` // Seats still available
+	ReservedSeats  int        `json:"reserved_seats"`  // Currently reserved seats
+	SoldSeats      int        `json:"sold_seats"`      // Already sold seats
+	MinPerOrder    int        `json:"min_per_order"`   // Min tickets per order
+	MaxPerOrder    int        `json:"max_per_order"`   // Max tickets per order
+	IsActive       bool       `json:"is_active"`       // Whether zone is active for sale
+	SortOrder      int        `json:"sort_order"`      // Display order
+	SaleStartAt    *time.Time `json:"sale_start_at"`   // Zone-specific sale start
+	SaleEndAt      *time.Time `json:"sale_end_at"`     // Zone-specific sale end
 	CreatedAt      time.Time  `json:"created_at"`
 	UpdatedAt      time.Time  `json:"updated_at"`
 	DeletedAt      *time.Time `json:"deleted_at,omitempty"`
