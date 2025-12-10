@@ -784,18 +784,18 @@
 
 ---
 
-### [ ]  P4-06: Saga Orchestrator - State Machine
+### [x]  P4-06: Saga Orchestrator - State Machine
 | Field | Value |
 |-------|-------|
 | **Description** | Implement Saga state machine |
 | **Technical Context** | `pkg/saga/state.go` |
 | **Acceptance Criteria** | - States: CREATED, RESERVED, PAID, CONFIRMED, FAILED<br>- State transitions validated<br>- State persisted in DB |
 
-- [ ] Define SagaState enum
-- [ ] Create saga_instances table (migration)
-- [ ] Implement state transitions
-- [ ] Persist state changes
-- [ ] Write tests
+- [x] Define SagaState enum
+- [x] Create saga_instances table (migration)
+- [x] Implement state transitions
+- [x] Persist state changes
+- [x] Write tests
 
 ---
 
