@@ -69,6 +69,7 @@ func main() {
 	// Initialize repositories
 	userRepo := repository.NewPostgresUserRepository(db.Pool())
 	sessionRepo := repository.NewPostgresSessionRepository(db.Pool())
+	tenantRepo := repository.NewPostgresTenantRepository(db.Pool())
 
 	// Get JWT secret from environment
 	jwtSecret := os.Getenv("JWT_SECRET")
@@ -82,6 +83,7 @@ func main() {
 		DB:          db,
 		UserRepo:    userRepo,
 		SessionRepo: sessionRepo,
+		TenantRepo:  tenantRepo,
 		ServiceConfig: &service.AuthServiceConfig{
 			JWTSecret:          jwtSecret,
 			AccessTokenExpiry:  15 * time.Minute,
@@ -125,6 +127,19 @@ func main() {
 				protected.GET("/me", container.AuthHandler.Me)
 				protected.POST("/logout-all", container.AuthHandler.LogoutAll)
 			}
+		}
+
+		// Tenant management routes (Admin/Super Admin only)
+		tenants := v1.Group("/tenants")
+		tenants.Use(authMiddleware(container.AuthService))
+		tenants.Use(adminOnlyMiddleware())
+		{
+			tenants.POST("", container.TenantHandler.Create)
+			tenants.GET("", container.TenantHandler.List)
+			tenants.GET("/:id", container.TenantHandler.GetByID)
+			tenants.GET("/slug/:slug", container.TenantHandler.GetBySlug)
+			tenants.PUT("/:id", container.TenantHandler.Update)
+			tenants.DELETE("/:id", container.TenantHandler.Delete)
 		}
 	}
 
@@ -213,6 +228,37 @@ func authMiddleware(authService service.AuthService) gin.HandlerFunc {
 		c.Set("user_id", claims.UserID)
 		c.Set("email", claims.Email)
 		c.Set("role", string(claims.Role))
+		c.Next()
+	}
+}
+
+// adminOnlyMiddleware restricts access to admin and super_admin roles only
+func adminOnlyMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		role, exists := c.Get("role")
+		if !exists {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
+				"success": false,
+				"error": gin.H{
+					"code":    "UNAUTHORIZED",
+					"message": "User role not found in context",
+				},
+			})
+			return
+		}
+
+		roleStr := role.(string)
+		if roleStr != "admin" && roleStr != "super_admin" {
+			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{
+				"success": false,
+				"error": gin.H{
+					"code":    "FORBIDDEN",
+					"message": "Only admin or super_admin can access this resource",
+				},
+			})
+			return
+		}
+
 		c.Next()
 	}
 }
