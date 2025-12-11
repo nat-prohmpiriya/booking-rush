@@ -10,6 +10,7 @@ import {
 import { Stripe, StripeElementsOptions } from "@stripe/stripe-js"
 import { Button } from "@/components/ui/button"
 import { Loader2, Lock, AlertCircle } from "lucide-react"
+import type { PaymentMethod } from "@/lib/api/payment"
 
 interface StripePaymentFormProps {
   clientSecret: string
@@ -18,14 +19,27 @@ interface StripePaymentFormProps {
   onSuccess: (paymentIntentId: string) => void
   onError: (error: string) => void
   disabled?: boolean
+  savedPaymentMethods?: PaymentMethod[]
+  selectedPaymentMethod?: string | null
+}
+
+interface CheckoutFormProps {
+  amount: number
+  clientSecret: string
+  onSuccess: (paymentIntentId: string) => void
+  onError: (error: string) => void
+  disabled?: boolean
+  selectedPaymentMethod?: string | null
 }
 
 function CheckoutForm({
   amount,
+  clientSecret,
   onSuccess,
   onError,
   disabled,
-}: Omit<StripePaymentFormProps, "clientSecret" | "stripe">) {
+  selectedPaymentMethod,
+}: CheckoutFormProps) {
   const stripe = useStripe()
   const elements = useElements()
   const [isLoading, setIsLoading] = useState(false)
@@ -34,7 +48,7 @@ function CheckoutForm({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    if (!stripe || !elements) {
+    if (!stripe) {
       return
     }
 
@@ -42,25 +56,53 @@ function CheckoutForm({
     setErrorMessage(null)
 
     try {
-      const { error, paymentIntent } = await stripe.confirmPayment({
-        elements,
-        confirmParams: {
-          return_url: `${window.location.origin}/booking/confirmation`,
-        },
-        redirect: "if_required",
-      })
+      // If using saved payment method
+      if (selectedPaymentMethod) {
+        const { error, paymentIntent } = await stripe.confirmCardPayment(
+          clientSecret,
+          {
+            payment_method: selectedPaymentMethod,
+            return_url: `${window.location.origin}/booking/confirmation`,
+          }
+        )
 
-      if (error) {
-        setErrorMessage(error.message || "Payment failed")
-        onError(error.message || "Payment failed")
-      } else if (paymentIntent && paymentIntent.status === "succeeded") {
-        onSuccess(paymentIntent.id)
-      } else if (paymentIntent && paymentIntent.status === "requires_action") {
-        // 3D Secure or other authentication required - Stripe handles this automatically
-        setErrorMessage("Additional authentication required")
+        if (error) {
+          setErrorMessage(error.message || "Payment failed")
+          onError(error.message || "Payment failed")
+        } else if (paymentIntent && paymentIntent.status === "succeeded") {
+          onSuccess(paymentIntent.id)
+        } else if (paymentIntent && paymentIntent.status === "requires_action") {
+          setErrorMessage("Additional authentication required")
+        } else {
+          setErrorMessage("Payment was not completed")
+          onError("Payment was not completed")
+        }
       } else {
-        setErrorMessage("Payment was not completed")
-        onError("Payment was not completed")
+        // Using new card via PaymentElement
+        if (!elements) {
+          setErrorMessage("Payment form not ready")
+          return
+        }
+
+        const { error, paymentIntent } = await stripe.confirmPayment({
+          elements,
+          confirmParams: {
+            return_url: `${window.location.origin}/booking/confirmation`,
+          },
+          redirect: "if_required",
+        })
+
+        if (error) {
+          setErrorMessage(error.message || "Payment failed")
+          onError(error.message || "Payment failed")
+        } else if (paymentIntent && paymentIntent.status === "succeeded") {
+          onSuccess(paymentIntent.id)
+        } else if (paymentIntent && paymentIntent.status === "requires_action") {
+          setErrorMessage("Additional authentication required")
+        } else {
+          setErrorMessage("Payment was not completed")
+          onError("Payment was not completed")
+        }
       }
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : "Payment failed"
@@ -71,15 +113,20 @@ function CheckoutForm({
     }
   }
 
+  // Show PaymentElement only when using new card
+  const showPaymentElement = selectedPaymentMethod === null || selectedPaymentMethod === undefined
+
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      <div className="rounded-lg border border-gray-700 bg-black/30 p-4">
-        <PaymentElement
-          options={{
-            layout: "tabs",
-          }}
-        />
-      </div>
+      {showPaymentElement && (
+        <div className="rounded-lg border border-gray-700 bg-black/30 p-4">
+          <PaymentElement
+            options={{
+              layout: "tabs",
+            }}
+          />
+        </div>
+      )}
 
       {errorMessage && (
         <div className="flex items-center gap-2 rounded-lg border border-red-800 bg-red-950/50 p-3 text-sm text-red-400">
@@ -90,7 +137,7 @@ function CheckoutForm({
 
       <Button
         type="submit"
-        disabled={!stripe || !elements || isLoading || disabled}
+        disabled={!stripe || (showPaymentElement && !elements) || isLoading || disabled}
         className="w-full py-6 text-lg font-semibold bg-[#d4af37] hover:bg-[#d4af37]/90 text-[#0a0a0a] disabled:opacity-50"
       >
         {isLoading ? (
@@ -120,6 +167,7 @@ export function StripePaymentForm({
   onSuccess,
   onError,
   disabled,
+  selectedPaymentMethod,
 }: StripePaymentFormProps) {
   const [isReady, setIsReady] = useState(false)
 
@@ -186,9 +234,11 @@ export function StripePaymentForm({
     <Elements stripe={stripe} options={options}>
       <CheckoutForm
         amount={amount}
+        clientSecret={clientSecret}
         onSuccess={onSuccess}
         onError={onError}
         disabled={disabled}
+        selectedPaymentMethod={selectedPaymentMethod}
       />
     </Elements>
   )

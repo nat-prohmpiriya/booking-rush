@@ -7,6 +7,7 @@ import { Separator } from "@/components/ui/separator"
 import { Clock, Shield, Lock, Calendar, MapPin, Ticket, AlertTriangle, CreditCard } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { bookingApi, paymentApi } from "@/lib/api/booking"
+import { paymentApi as paymentMethodsApi, type PaymentMethod } from "@/lib/api/payment"
 import { eventsApi } from "@/lib/api/events"
 import type { EventResponse, ShowResponse, ShowZoneResponse, ReserveSeatsResponse, PaymentIntentResponse } from "@/lib/api/types"
 import { ApiRequestError } from "@/lib/api/client"
@@ -45,6 +46,10 @@ export default function CheckoutPage() {
   const [stripe, setStripe] = useState<Stripe | null>(null)
   const [paymentIntent, setPaymentIntent] = useState<PaymentIntentResponse | null>(null)
 
+  // Saved payment methods
+  const [savedPaymentMethods, setSavedPaymentMethods] = useState<PaymentMethod[]>([])
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string | null>(null) // null = new card
+
   // Timer state
   const [timeLeft, setTimeLeft] = useState(600) // 10 minutes default
 
@@ -53,6 +58,26 @@ export default function CheckoutPage() {
     if (isStripeConfigured()) {
       getStripe().then(setStripe)
     }
+  }, [])
+
+  // Fetch saved payment methods
+  useEffect(() => {
+    const fetchSavedPaymentMethods = async () => {
+      try {
+        const response = await paymentMethodsApi.listPaymentMethods()
+        setSavedPaymentMethods(response.payment_methods || [])
+        // Auto-select default payment method if available
+        const defaultMethod = response.payment_methods?.find(pm => pm.is_default)
+        if (defaultMethod) {
+          setSelectedPaymentMethod(defaultMethod.id)
+        }
+      } catch (err) {
+        // Silently fail - user can still use new card
+        console.log("No saved payment methods:", err)
+      }
+    }
+
+    fetchSavedPaymentMethods()
   }, [])
 
   // Load queue data from sessionStorage
@@ -557,6 +582,67 @@ export default function CheckoutPage() {
 
                 <h2 className="mb-6 text-xl font-semibold text-white">Payment Details</h2>
 
+                {/* Saved Payment Methods */}
+                {savedPaymentMethods.length > 0 && (
+                  <div className="mb-6 space-y-3">
+                    <p className="text-sm font-medium text-gray-300">Saved Cards</p>
+                    {savedPaymentMethods.map((pm) => (
+                      <button
+                        key={pm.id}
+                        type="button"
+                        onClick={() => setSelectedPaymentMethod(pm.id)}
+                        className={`w-full flex items-center gap-3 p-4 rounded-lg border transition-colors ${
+                          selectedPaymentMethod === pm.id
+                            ? "border-[#d4af37] bg-[#d4af37]/10"
+                            : "border-gray-700 bg-black/30 hover:border-gray-600"
+                        }`}
+                      >
+                        <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+                          selectedPaymentMethod === pm.id ? "border-[#d4af37]" : "border-gray-500"
+                        }`}>
+                          {selectedPaymentMethod === pm.id && (
+                            <div className="w-2.5 h-2.5 rounded-full bg-[#d4af37]" />
+                          )}
+                        </div>
+                        <CreditCard className="h-5 w-5 text-gray-400" />
+                        <div className="flex-1 text-left">
+                          <span className="text-white capitalize">{pm.brand}</span>
+                          <span className="text-gray-400"> •••• {pm.last4}</span>
+                          {pm.is_default && (
+                            <span className="ml-2 text-xs bg-[#d4af37]/20 text-[#d4af37] px-2 py-0.5 rounded">
+                              Default
+                            </span>
+                          )}
+                        </div>
+                        <span className="text-sm text-gray-500">
+                          {pm.exp_month.toString().padStart(2, "0")}/{pm.exp_year.toString().slice(-2)}
+                        </span>
+                      </button>
+                    ))}
+
+                    {/* Use new card option */}
+                    <button
+                      type="button"
+                      onClick={() => setSelectedPaymentMethod(null)}
+                      className={`w-full flex items-center gap-3 p-4 rounded-lg border transition-colors ${
+                        selectedPaymentMethod === null
+                          ? "border-[#d4af37] bg-[#d4af37]/10"
+                          : "border-gray-700 bg-black/30 hover:border-gray-600"
+                      }`}
+                    >
+                      <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+                        selectedPaymentMethod === null ? "border-[#d4af37]" : "border-gray-500"
+                      }`}>
+                        {selectedPaymentMethod === null && (
+                          <div className="w-2.5 h-2.5 rounded-full bg-[#d4af37]" />
+                        )}
+                      </div>
+                      <CreditCard className="h-5 w-5 text-gray-400" />
+                      <span className="text-white">Use a new card</span>
+                    </button>
+                  </div>
+                )}
+
                 {/* Stripe Payment Form or Fallback */}
                 {stripe && paymentIntent?.client_secret ? (
                   <StripePaymentForm
@@ -566,6 +652,8 @@ export default function CheckoutPage() {
                     onSuccess={handlePaymentSuccess}
                     onError={handlePaymentError}
                     disabled={timeLeft <= 0}
+                    savedPaymentMethods={savedPaymentMethods}
+                    selectedPaymentMethod={selectedPaymentMethod}
                   />
                 ) : (
                   <div className="space-y-4">

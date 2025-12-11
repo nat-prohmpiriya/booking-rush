@@ -8,6 +8,7 @@ import (
 	"github.com/stripe/stripe-go/v76/billingportal/session"
 	"github.com/stripe/stripe-go/v76/customer"
 	"github.com/stripe/stripe-go/v76/paymentintent"
+	"github.com/stripe/stripe-go/v76/paymentmethod"
 	"github.com/stripe/stripe-go/v76/refund"
 )
 
@@ -302,4 +303,51 @@ func (g *StripeGateway) CreatePortalSession(ctx context.Context, req *PortalSess
 	return &PortalSessionResponse{
 		URL: sess.URL,
 	}, nil
+}
+
+// ListPaymentMethods lists saved payment methods for a customer
+func (g *StripeGateway) ListPaymentMethods(ctx context.Context, customerID string) ([]*PaymentMethodInfo, error) {
+	if customerID == "" {
+		return nil, fmt.Errorf("customer ID is required")
+	}
+
+	// Get customer to find default payment method
+	cust, err := customer.Get(customerID, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get customer: %w", err)
+	}
+
+	defaultPMID := ""
+	if cust.InvoiceSettings != nil && cust.InvoiceSettings.DefaultPaymentMethod != nil {
+		defaultPMID = cust.InvoiceSettings.DefaultPaymentMethod.ID
+	}
+
+	// List all card payment methods
+	params := &stripe.PaymentMethodListParams{
+		Customer: stripe.String(customerID),
+		Type:     stripe.String("card"),
+	}
+
+	var paymentMethods []*PaymentMethodInfo
+	iter := paymentmethod.List(params)
+	for iter.Next() {
+		pm := iter.PaymentMethod()
+		if pm.Card != nil {
+			paymentMethods = append(paymentMethods, &PaymentMethodInfo{
+				ID:        pm.ID,
+				Type:      "card",
+				Brand:     string(pm.Card.Brand),
+				Last4:     pm.Card.Last4,
+				ExpMonth:  pm.Card.ExpMonth,
+				ExpYear:   pm.Card.ExpYear,
+				IsDefault: pm.ID == defaultPMID,
+			})
+		}
+	}
+
+	if err := iter.Err(); err != nil {
+		return nil, fmt.Errorf("failed to list payment methods: %w", err)
+	}
+
+	return paymentMethods, nil
 }

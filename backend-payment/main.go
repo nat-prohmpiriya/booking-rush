@@ -216,17 +216,19 @@ func main() {
 				payments.GET("/:id", container.PaymentHandler.GetPayment)
 				payments.GET("/booking/:bookingId", container.PaymentHandler.GetPaymentByBookingID)
 				payments.GET("/user/:userId", container.PaymentHandler.GetUserPayments)
+				payments.GET("/methods", container.PaymentHandler.ListPaymentMethods)
 
 				// Stripe PaymentIntent endpoints
 				if idempotencyConfig != nil {
 					payments.POST("/intent", middleware.IdempotencyMiddleware(idempotencyConfig), container.PaymentHandler.CreatePaymentIntent)
 					payments.POST("/intent/confirm", middleware.IdempotencyMiddleware(idempotencyConfig), container.PaymentHandler.ConfirmPaymentIntent)
-					payments.POST("/portal", middleware.IdempotencyMiddleware(idempotencyConfig), container.PaymentHandler.CreatePortalSession)
 				} else {
 					payments.POST("/intent", container.PaymentHandler.CreatePaymentIntent)
 					payments.POST("/intent/confirm", container.PaymentHandler.ConfirmPaymentIntent)
-					payments.POST("/portal", container.PaymentHandler.CreatePortalSession)
 				}
+
+				// Customer Portal - no idempotency needed (not a payment operation)
+				payments.POST("/portal", container.PaymentHandler.CreatePortalSession)
 			}
 		}
 

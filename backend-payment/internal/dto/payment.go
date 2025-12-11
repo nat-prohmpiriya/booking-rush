@@ -105,3 +105,20 @@ type CreatePortalSessionRequest struct {
 type PortalSessionResponse struct {
 	URL string `json:"url"`
 }
+
+// PaymentMethodResponse represents a saved payment method
+type PaymentMethodResponse struct {
+	ID        string `json:"id"`
+	Type      string `json:"type"`
+	Brand     string `json:"brand"`
+	Last4     string `json:"last4"`
+	ExpMonth  int64  `json:"exp_month"`
+	ExpYear   int64  `json:"exp_year"`
+	IsDefault bool   `json:"is_default"`
+}
+
+// PaymentMethodsListResponse represents a list of saved payment methods
+type PaymentMethodsListResponse struct {
+	PaymentMethods []*PaymentMethodResponse `json:"payment_methods"`
+	Total          int                      `json:"total"`
+}

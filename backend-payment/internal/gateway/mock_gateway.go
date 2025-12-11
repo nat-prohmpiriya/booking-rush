@@ -327,3 +327,41 @@ func (g *MockGateway) CreatePortalSession(ctx context.Context, req *PortalSessio
 		URL: portalURL,
 	}, nil
 }
+
+// ListPaymentMethods returns mock saved payment methods
+func (g *MockGateway) ListPaymentMethods(ctx context.Context, customerID string) ([]*PaymentMethodInfo, error) {
+	if customerID == "" {
+		return nil, fmt.Errorf("customer ID is required")
+	}
+
+	// Simulate processing delay
+	if g.config.DelayMs > 0 {
+		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		case <-time.After(time.Duration(g.config.DelayMs) * time.Millisecond):
+		}
+	}
+
+	// Return mock saved cards
+	return []*PaymentMethodInfo{
+		{
+			ID:        "pm_mock_visa_4242",
+			Type:      "card",
+			Brand:     "visa",
+			Last4:     "4242",
+			ExpMonth:  12,
+			ExpYear:   2025,
+			IsDefault: true,
+		},
+		{
+			ID:        "pm_mock_mastercard_5555",
+			Type:      "card",
+			Brand:     "mastercard",
+			Last4:     "5555",
+			ExpMonth:  6,
+			ExpYear:   2026,
+			IsDefault: false,
+		},
+	}, nil
+}

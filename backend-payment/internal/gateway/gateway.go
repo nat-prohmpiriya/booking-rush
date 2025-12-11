@@ -27,6 +27,9 @@ type PaymentGateway interface {
 	// CreatePortalSession creates a Stripe Customer Portal session
 	CreatePortalSession(ctx context.Context, req *PortalSessionRequest) (*PortalSessionResponse, error)
 
+	// ListPaymentMethods lists saved payment methods for a customer
+	ListPaymentMethods(ctx context.Context, customerID string) ([]*PaymentMethodInfo, error)
+
 	// Name returns the gateway name
 	Name() string
 }
@@ -120,4 +123,15 @@ type PortalSessionRequest struct {
 // PortalSessionResponse represents a Customer Portal session response
 type PortalSessionResponse struct {
 	URL string
+}
+
+// PaymentMethodInfo represents a saved payment method
+type PaymentMethodInfo struct {
+	ID        string `json:"id"`
+	Type      string `json:"type"`       // "card", "promptpay", etc.
+	Brand     string `json:"brand"`      // "visa", "mastercard", etc.
+	Last4     string `json:"last4"`      // Last 4 digits
+	ExpMonth  int64  `json:"exp_month"`  // Expiration month
+	ExpYear   int64  `json:"exp_year"`   // Expiration year
+	IsDefault bool   `json:"is_default"` // Is default payment method
 }

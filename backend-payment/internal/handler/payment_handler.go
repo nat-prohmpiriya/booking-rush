@@ -518,3 +518,64 @@ func (h *PaymentHandler) updateStripeCustomerID(authServiceURL, userID, stripeCu
 
 	return nil
 }
+
+// ListPaymentMethods handles GET /payments/methods
+// Returns saved payment methods for the current user
+func (h *PaymentHandler) ListPaymentMethods(c *gin.Context) {
+	// Get user ID from headers
+	userID := c.GetHeader("X-User-ID")
+	if userID == "" {
+		userID = c.GetString("user_id")
+	}
+	if userID == "" {
+		c.JSON(http.StatusUnauthorized, dto.NewErrorResponse("UNAUTHORIZED", "user_id is required"))
+		return
+	}
+
+	// Get Stripe Customer ID from Auth Service
+	authServiceURL := os.Getenv("AUTH_SERVICE_URL")
+	if authServiceURL == "" {
+		authServiceURL = "http://localhost:8081"
+	}
+
+	stripeCustomerID, err := h.getStripeCustomerID(authServiceURL, userID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, dto.NewErrorResponse("AUTH_SERVICE_ERROR", err.Error()))
+		return
+	}
+
+	// If user doesn't have a Stripe Customer ID, return empty list
+	if stripeCustomerID == "" {
+		c.JSON(http.StatusOK, dto.NewSuccessResponse(&dto.PaymentMethodsListResponse{
+			PaymentMethods: []*dto.PaymentMethodResponse{},
+			Total:          0,
+		}))
+		return
+	}
+
+	// Get payment methods from Stripe
+	paymentMethods, err := h.paymentGateway.ListPaymentMethods(c.Request.Context(), stripeCustomerID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, dto.NewErrorResponse("LIST_METHODS_FAILED", err.Error()))
+		return
+	}
+
+	// Convert to response
+	methodResponses := make([]*dto.PaymentMethodResponse, len(paymentMethods))
+	for i, pm := range paymentMethods {
+		methodResponses[i] = &dto.PaymentMethodResponse{
+			ID:        pm.ID,
+			Type:      pm.Type,
+			Brand:     pm.Brand,
+			Last4:     pm.Last4,
+			ExpMonth:  pm.ExpMonth,
+			ExpYear:   pm.ExpYear,
+			IsDefault: pm.IsDefault,
+		}
+	}
+
+	c.JSON(http.StatusOK, dto.NewSuccessResponse(&dto.PaymentMethodsListResponse{
+		PaymentMethods: methodResponses,
+		Total:          len(methodResponses),
+	}))
+}
