@@ -3,14 +3,18 @@ package telemetry
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
+	"go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/sdk/resource"
+	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
-	semconv "go.opentelemetry.io/otel/semconv/v1.21.0"
+	semconv "go.opentelemetry.io/otel/semconv/v1.27.0"
 	"go.opentelemetry.io/otel/trace"
 )
 
@@ -21,13 +25,20 @@ type Config struct {
 	ServiceVersion string
 	Environment    string
 	CollectorAddr  string
+	// Metric-specific configuration
+	MetricInterval time.Duration // Interval for metric export (default: 15s)
+	// Trace-specific configuration
+	SampleRatio float64 // Sample ratio for traces (default: 1.0 = always sample)
 }
 
-// Telemetry holds the tracer provider and tracer
+// Telemetry holds the tracer provider, meter provider, tracer, and meter
 type Telemetry struct {
-	provider *sdktrace.TracerProvider
-	tracer   trace.Tracer
-	config   *Config
+	tracerProvider *sdktrace.TracerProvider
+	meterProvider  *sdkmetric.MeterProvider
+	tracer         trace.Tracer
+	meter          metric.Meter
+	config         *Config
+	resource       *resource.Resource
 }
 
 var globalTelemetry *Telemetry
@@ -35,64 +46,163 @@ var globalTelemetry *Telemetry
 // Init initializes OpenTelemetry with the given configuration
 func Init(ctx context.Context, cfg *Config) (*Telemetry, error) {
 	if cfg == nil || !cfg.Enabled {
-		// Return a no-op tracer if disabled
+		// Return a no-op tracer/meter if disabled
+		serviceName := "unknown"
+		if cfg != nil {
+			serviceName = cfg.ServiceName
+		}
 		globalTelemetry = &Telemetry{
-			tracer: otel.Tracer(cfg.ServiceName),
+			tracer: otel.Tracer(serviceName),
+			meter:  otel.Meter(serviceName),
 			config: cfg,
 		}
 		return globalTelemetry, nil
 	}
 
-	// Create OTLP exporter
-	exporter, err := otlptracegrpc.New(ctx,
-		otlptracegrpc.WithEndpoint(cfg.CollectorAddr),
-		otlptracegrpc.WithInsecure(), // Use insecure for internal network
-	)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create OTLP exporter: %w", err)
+	// Apply defaults
+	if cfg.MetricInterval == 0 {
+		cfg.MetricInterval = 15 * time.Second
+	}
+	if cfg.SampleRatio == 0 {
+		cfg.SampleRatio = 1.0 // Always sample by default
 	}
 
 	// Create resource with service information
-	res, err := resource.Merge(
-		resource.Default(),
-		resource.NewWithAttributes(
-			semconv.SchemaURL,
-			semconv.ServiceName(cfg.ServiceName),
-			semconv.ServiceVersion(cfg.ServiceVersion),
-			attribute.String("environment", cfg.Environment),
-		),
-	)
+	res, err := createResource(cfg)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create resource: %w", err)
 	}
 
 	// Create TracerProvider
-	provider := sdktrace.NewTracerProvider(
-		sdktrace.WithBatcher(exporter),
-		sdktrace.WithResource(res),
-		sdktrace.WithSampler(sdktrace.AlwaysSample()), // Sample all for now
-	)
+	tracerProvider, err := createTracerProvider(ctx, cfg, res)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create tracer provider: %w", err)
+	}
 
-	// Set global provider and propagator
-	otel.SetTracerProvider(provider)
+	// Create MeterProvider
+	meterProvider, err := createMeterProvider(ctx, cfg, res)
+	if err != nil {
+		// Shutdown tracer provider if meter provider fails
+		_ = tracerProvider.Shutdown(ctx)
+		return nil, fmt.Errorf("failed to create meter provider: %w", err)
+	}
+
+	// Set global providers and propagator
+	otel.SetTracerProvider(tracerProvider)
+	otel.SetMeterProvider(meterProvider)
 	otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(
 		propagation.TraceContext{},
 		propagation.Baggage{},
 	))
 
 	globalTelemetry = &Telemetry{
-		provider: provider,
-		tracer:   provider.Tracer(cfg.ServiceName),
-		config:   cfg,
+		tracerProvider: tracerProvider,
+		meterProvider:  meterProvider,
+		tracer:         tracerProvider.Tracer(cfg.ServiceName),
+		meter:          meterProvider.Meter(cfg.ServiceName),
+		config:         cfg,
+		resource:       res,
 	}
 
 	return globalTelemetry, nil
 }
 
-// Shutdown gracefully shuts down the tracer provider
+// createResource creates a resource with service information and attributes
+func createResource(cfg *Config) (*resource.Resource, error) {
+	// Create service resource without merging with Default() to avoid schema URL conflicts
+	// The default resource uses a newer schema URL that conflicts with semconv v1.27.0
+	return resource.NewWithAttributes(
+		semconv.SchemaURL,
+		semconv.ServiceName(cfg.ServiceName),
+		semconv.ServiceVersion(cfg.ServiceVersion),
+		semconv.DeploymentEnvironmentNameKey.String(cfg.Environment),
+		attribute.String("service.namespace", "booking-rush"),
+		semconv.TelemetrySDKLanguageGo,
+		semconv.TelemetrySDKNameKey.String("opentelemetry"),
+		semconv.TelemetrySDKVersionKey.String("1.39.0"),
+	), nil
+}
+
+// createTracerProvider creates and configures the TracerProvider
+func createTracerProvider(ctx context.Context, cfg *Config, res *resource.Resource) (*sdktrace.TracerProvider, error) {
+	// Create OTLP trace exporter
+	traceExporter, err := otlptracegrpc.New(ctx,
+		otlptracegrpc.WithEndpoint(cfg.CollectorAddr),
+		otlptracegrpc.WithInsecure(), // Use insecure for internal network
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create OTLP trace exporter: %w", err)
+	}
+
+	// Create sampler based on config
+	var sampler sdktrace.Sampler
+	if cfg.SampleRatio >= 1.0 {
+		sampler = sdktrace.AlwaysSample()
+	} else if cfg.SampleRatio <= 0 {
+		sampler = sdktrace.NeverSample()
+	} else {
+		sampler = sdktrace.TraceIDRatioBased(cfg.SampleRatio)
+	}
+
+	// Create TracerProvider
+	provider := sdktrace.NewTracerProvider(
+		sdktrace.WithBatcher(traceExporter),
+		sdktrace.WithResource(res),
+		sdktrace.WithSampler(sampler),
+	)
+
+	return provider, nil
+}
+
+// createMeterProvider creates and configures the MeterProvider
+func createMeterProvider(ctx context.Context, cfg *Config, res *resource.Resource) (*sdkmetric.MeterProvider, error) {
+	// Create OTLP metric exporter
+	metricExporter, err := otlpmetricgrpc.New(ctx,
+		otlpmetricgrpc.WithEndpoint(cfg.CollectorAddr),
+		otlpmetricgrpc.WithInsecure(), // Use insecure for internal network
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create OTLP metric exporter: %w", err)
+	}
+
+	// Create MeterProvider with periodic reader
+	provider := sdkmetric.NewMeterProvider(
+		sdkmetric.WithResource(res),
+		sdkmetric.WithReader(
+			sdkmetric.NewPeriodicReader(
+				metricExporter,
+				sdkmetric.WithInterval(cfg.MetricInterval),
+			),
+		),
+	)
+
+	return provider, nil
+}
+
+// Shutdown gracefully shuts down both tracer and meter providers
 func Shutdown(ctx context.Context) error {
-	if globalTelemetry != nil && globalTelemetry.provider != nil {
-		return globalTelemetry.provider.Shutdown(ctx)
+	if globalTelemetry == nil {
+		return nil
+	}
+
+	var errs []error
+
+	// Shutdown tracer provider
+	if globalTelemetry.tracerProvider != nil {
+		if err := globalTelemetry.tracerProvider.Shutdown(ctx); err != nil {
+			errs = append(errs, fmt.Errorf("tracer provider shutdown: %w", err))
+		}
+	}
+
+	// Shutdown meter provider
+	if globalTelemetry.meterProvider != nil {
+		if err := globalTelemetry.meterProvider.Shutdown(ctx); err != nil {
+			errs = append(errs, fmt.Errorf("meter provider shutdown: %w", err))
+		}
+	}
+
+	if len(errs) > 0 {
+		return fmt.Errorf("shutdown errors: %v", errs)
 	}
 	return nil
 }
@@ -105,6 +215,29 @@ func Get() *Telemetry {
 // Tracer returns the tracer
 func (t *Telemetry) Tracer() trace.Tracer {
 	return t.tracer
+}
+
+// Meter returns the meter for creating metrics
+func (t *Telemetry) Meter() metric.Meter {
+	return t.meter
+}
+
+// Resource returns the resource
+func (t *Telemetry) Resource() *resource.Resource {
+	return t.resource
+}
+
+// Config returns the telemetry configuration
+func (t *Telemetry) Config() *Config {
+	return t.config
+}
+
+// GetMeter returns the global meter instance
+func GetMeter() metric.Meter {
+	if globalTelemetry == nil || globalTelemetry.meter == nil {
+		return otel.Meter("noop")
+	}
+	return globalTelemetry.meter
 }
 
 // StartSpan starts a new span with the given name
