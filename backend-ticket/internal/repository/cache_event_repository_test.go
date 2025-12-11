@@ -144,8 +144,6 @@ func TestCachedEventRepository_GetByID(t *testing.T) {
 		Slug:      "test-event",
 		Status:    domain.EventStatusPublished,
 		TenantID:  "tenant-1",
-		StartTime: now.Add(24 * time.Hour),
-		EndTime:   now.Add(26 * time.Hour),
 		CreatedAt: now,
 		UpdatedAt: now,
 	}
@@ -209,8 +207,6 @@ func TestCachedEventRepository_ListPublished(t *testing.T) {
 		Slug:      "event-1",
 		Status:    domain.EventStatusPublished,
 		TenantID:  "tenant-1",
-		StartTime: now.Add(24 * time.Hour),
-		EndTime:   now.Add(26 * time.Hour),
 		CreatedAt: now,
 		UpdatedAt: now,
 	})
@@ -220,8 +216,6 @@ func TestCachedEventRepository_ListPublished(t *testing.T) {
 		Slug:      "event-2",
 		Status:    domain.EventStatusPublished,
 		TenantID:  "tenant-1",
-		StartTime: now.Add(48 * time.Hour),
-		EndTime:   now.Add(50 * time.Hour),
 		CreatedAt: now,
 		UpdatedAt: now,
 	})
@@ -231,8 +225,6 @@ func TestCachedEventRepository_ListPublished(t *testing.T) {
 		Slug:      "event-3",
 		Status:    domain.EventStatusDraft, // Not published
 		TenantID:  "tenant-1",
-		StartTime: now.Add(72 * time.Hour),
-		EndTime:   now.Add(74 * time.Hour),
 		CreatedAt: now,
 		UpdatedAt: now,
 	})
@@ -280,8 +272,6 @@ func TestCachedEventRepository_Update(t *testing.T) {
 		Slug:      "event-1",
 		Status:    domain.EventStatusPublished,
 		TenantID:  "tenant-1",
-		StartTime: now.Add(24 * time.Hour),
-		EndTime:   now.Add(26 * time.Hour),
 		CreatedAt: now,
 		UpdatedAt: now,
 	}
@@ -327,8 +317,6 @@ func TestCachedEventRepository_Delete(t *testing.T) {
 		Slug:      "event-1",
 		Status:    domain.EventStatusPublished,
 		TenantID:  "tenant-1",
-		StartTime: now.Add(24 * time.Hour),
-		EndTime:   now.Add(26 * time.Hour),
 		CreatedAt: now,
 		UpdatedAt: now,
 	}
@@ -373,8 +361,6 @@ func TestCachedEventRepository_List(t *testing.T) {
 		Slug:      "event-1",
 		Status:    domain.EventStatusPublished,
 		TenantID:  "tenant-1",
-		StartTime: now.Add(24 * time.Hour),
-		EndTime:   now.Add(26 * time.Hour),
 		CreatedAt: now,
 		UpdatedAt: now,
 	})
@@ -384,8 +370,6 @@ func TestCachedEventRepository_List(t *testing.T) {
 		Slug:      "event-2",
 		Status:    domain.EventStatusDraft,
 		TenantID:  "tenant-2",
-		StartTime: now.Add(48 * time.Hour),
-		EndTime:   now.Add(50 * time.Hour),
 		CreatedAt: now,
 		UpdatedAt: now,
 	})
@@ -447,8 +431,6 @@ func TestCachedEventRepository_GetBySlug(t *testing.T) {
 		Slug:      "test-event",
 		Status:    domain.EventStatusPublished,
 		TenantID:  "tenant-1",
-		StartTime: now.Add(24 * time.Hour),
-		EndTime:   now.Add(26 * time.Hour),
 		CreatedAt: now,
 		UpdatedAt: now,
 	}
@@ -490,8 +472,6 @@ func TestCachedEventRepository_SlugExists(t *testing.T) {
 		Slug:      "test-event",
 		Status:    domain.EventStatusPublished,
 		TenantID:  "tenant-1",
-		StartTime: now.Add(24 * time.Hour),
-		EndTime:   now.Add(26 * time.Hour),
 		CreatedAt: now,
 		UpdatedAt: now,
 	}
