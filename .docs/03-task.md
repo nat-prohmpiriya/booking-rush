@@ -1096,33 +1096,33 @@
 
 ---
 
-### [ ]  P6-05: Queue Release Batch Worker
+### [x]  P6-05: Queue Release Batch Worker
 | Field | Value |
 |-------|-------|
 | **Description** | Release users from queue in batches |
 | **Technical Context** | `backend-booking-service/cmd/queue-worker/` |
 | **Acceptance Criteria** | - Release 100 users per batch<br>- Generate Queue Pass for released users<br>- Run continuously |
 
-- [ ] Create queue release worker
-- [ ] Pop users from Sorted Set
-- [ ] Generate Queue Pass tokens
-- [ ] Configure batch size
-- [ ] Write tests
+- [x] Create queue release worker
+- [x] Pop users from Sorted Set
+- [x] Generate Queue Pass tokens
+- [x] Configure batch size
+- [x] Write tests
 
 ---
 
-### [ ]  P6-06: Audit Logging Middleware
+### [x]  P6-06: Audit Logging Middleware
 | Field | Value |
 |-------|-------|
 | **Description** | Implement audit logging middleware |
 | **Technical Context** | `pkg/middleware/audit.go` |
 | **Acceptance Criteria** | - Log all write operations<br>- Capture: user_id, action, entity, old/new values<br>- Capture: IP address, user agent<br>- Store in partitioned table |
 
-- [ ] Create audit middleware
-- [ ] Capture request details
-- [ ] Log to audit_logs table
-- [ ] Handle async logging (don't block request)
-- [ ] Write tests
+- [x] Create audit middleware
+- [x] Capture request details
+- [x] Log to audit_logs table
+- [x] Handle async logging (don't block request)
+- [x] Write tests
 
 ---
 
@@ -1130,7 +1130,7 @@
 | Field | Value |
 |-------|-------|
 | **Description** | Implement audit log viewing endpoints |
-| **Technical Context** | `backend-admin-service/` or API Gateway |
+| **Technical Context** | `backend-admin/` or API Gateway |
 | **Acceptance Criteria** | - `GET /admin/audit-logs` lists logs (paginated)<br>- Filter by user, action, entity<br>- Admin only access |
 
 - [ ] Create audit log repository
