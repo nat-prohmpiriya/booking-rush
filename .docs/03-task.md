@@ -1254,10 +1254,10 @@
 
 ---
 
-### [ ]  P7-08: Booking Flow - Payment
+### [ ]  P7-08: Booking Flow - Checkout & Payment
 | Field | Value |
 |-------|-------|
-| **Description** | Create payment page |
+| **Description** | Create Checkout page |
 | **Technical Context** | `frontend-web/app/events/[slug]/payment/page.tsx` |
 | **Acceptance Criteria** | - Show order summary<br>- Countdown timer (10 min)<br>- Payment form (mock)<br>- Handle timeout |
 
@@ -1284,18 +1284,18 @@
 
 ---
 
-### [ ]  P7-10: Virtual Queue UI
+### [x]  P7-10: Virtual Queue UI
 | Field | Value |
 |-------|-------|
 | **Description** | Create queue waiting room page |
 | **Technical Context** | `frontend-web/app/queue/page.tsx` |
 | **Acceptance Criteria** | - Show queue position<br>- Show estimated wait time<br>- Auto-refresh status<br>- Auto-redirect when ready |
 
-- [ ] Create queue page
-- [ ] Display position
-- [ ] Display estimated wait
-- [ ] Poll for status updates
-- [ ] Auto-redirect on ready
+- [x] Create queue page
+- [x] Display position
+- [x] Display estimated wait
+- [x] Poll for status updates
+- [x] Auto-redirect on ready
 
 ---
 

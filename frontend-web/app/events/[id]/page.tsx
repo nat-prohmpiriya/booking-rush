@@ -181,7 +181,14 @@ export default function EventDetailPage() {
         </div>
       </div>
 
-      <StickyCheckout totalPrice={getTotalPrice()} totalTickets={getTotalTickets()} isEventEnded={isEventEnded()} />
+      <StickyCheckout
+        eventId={eventId}
+        showId={selectedShow?.id}
+        selectedTickets={selectedTickets}
+        totalPrice={getTotalPrice()}
+        totalTickets={getTotalTickets()}
+        isEventEnded={isEventEnded()}
+      />
     </div>
   )
 }

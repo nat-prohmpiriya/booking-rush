@@ -38,6 +38,8 @@ func DefaultCORSConfig() CORSConfig {
 			"Authorization",
 			"X-Request-ID",
 			"X-Requested-With",
+			"X-Idempotency-Key",
+			"X-Queue-Pass",
 		},
 		ExposeHeaders: []string{
 			"Content-Length",

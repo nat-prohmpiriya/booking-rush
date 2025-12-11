@@ -5,13 +5,34 @@ import { ShoppingCart } from "lucide-react"
 import Link from "next/link"
 
 type StickyCheckoutProps = {
+  eventId: string
+  showId?: string
+  selectedTickets: Record<string, number>
   totalPrice: number
   totalTickets: number
   isEventEnded?: boolean
 }
 
-export function StickyCheckout({ totalPrice, totalTickets, isEventEnded = false }: StickyCheckoutProps) {
+export function StickyCheckout({
+  eventId,
+  showId,
+  selectedTickets,
+  totalPrice,
+  totalTickets,
+  isEventEnded = false
+}: StickyCheckoutProps) {
   const isDisabled = totalTickets === 0 || isEventEnded
+
+  // Build queue URL with query params
+  const buildQueueUrl = () => {
+    if (isDisabled) return "#"
+    const params = new URLSearchParams()
+    params.set("event_id", eventId)
+    if (showId) params.set("show_id", showId)
+    params.set("tickets", JSON.stringify(selectedTickets))
+    params.set("total", totalPrice.toString())
+    return `/queue?${params.toString()}`
+  }
 
   return (
     <div className="fixed bottom-0 left-0 right-0 border-t border-[#1a1a1a] bg-[#0a0a0a]/95 backdrop-blur-lg z-50">
@@ -34,7 +55,7 @@ export function StickyCheckout({ totalPrice, totalTickets, isEventEnded = false 
             )}
           </div>
 
-          <Link href={!isDisabled ? "/queue" : "#"}>
+          <Link href={buildQueueUrl()}>
             <Button
               size="lg"
               disabled={isDisabled}

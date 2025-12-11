@@ -145,30 +145,43 @@ export interface ShowZoneListResponse extends PaginatedResponse<ShowZoneResponse
 
 // Booking types
 export interface ReserveSeatsRequest {
-  show_id: string
+  event_id: string
   zone_id: string
+  show_id?: string
   quantity: number
+  unit_price?: number
 }
 
-export interface ReservationResponse {
-  id: string
-  user_id: string
-  show_id: string
-  zone_id: string
-  quantity: number
+export interface ReserveSeatsResponse {
+  booking_id: string
   status: string
   expires_at: string
-  created_at: string
+  total_price: number
+}
+
+export interface ConfirmBookingRequest {
+  payment_id?: string
+}
+
+export interface ConfirmBookingResponse {
+  booking_id: string
+  status: string
+  confirmed_at: string
+  confirmation_code?: string
 }
 
 export interface BookingResponse {
   id: string
   user_id: string
-  reservation_id: string
+  event_id: string
+  zone_id: string
+  quantity: number
   status: string
-  total_amount: number
-  created_at: string
-  updated_at: string
+  total_price: number
+  payment_id?: string
+  reserved_at: string
+  confirmed_at?: string
+  expires_at: string
 }
 
 // Payment types
@@ -185,4 +198,44 @@ export interface PaymentResponse {
   status: string
   payment_method: string
   created_at: string
+}
+
+// Queue types
+export interface JoinQueueRequest {
+  event_id: string
+}
+
+export interface JoinQueueResponse {
+  position: number
+  token: string
+  estimated_wait_seconds: number
+  joined_at: string
+  expires_at: string
+  message?: string
+}
+
+export interface QueuePositionResponse {
+  position: number
+  total_in_queue: number
+  estimated_wait_seconds: number
+  is_ready: boolean
+  expires_at?: string
+  queue_pass?: string
+  queue_pass_expires_at?: string
+}
+
+export interface QueueStatusResponse {
+  event_id: string
+  total_in_queue: number
+  is_open: boolean
+}
+
+export interface LeaveQueueRequest {
+  event_id: string
+  token: string
+}
+
+export interface LeaveQueueResponse {
+  success: boolean
+  message: string
 }

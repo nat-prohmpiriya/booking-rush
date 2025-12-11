@@ -56,11 +56,14 @@ const MOCK_BOOKINGS: BookingWithEvent[] = [
   {
     id: "booking-001",
     user_id: "user-1",
-    reservation_id: "res-001",
+    event_id: "event-1",
+    zone_id: "zone-1",
+    quantity: 2,
     status: "confirmed",
-    total_amount: 4500,
-    created_at: "2025-12-15T10:30:00Z",
-    updated_at: "2025-12-15T10:30:00Z",
+    total_price: 4500,
+    reserved_at: "2025-12-15T10:30:00Z",
+    confirmed_at: "2025-12-15T10:35:00Z",
+    expires_at: "2025-12-15T10:40:00Z",
     event: {
       id: "event-1",
       title: "BLACKPINK World Tour 2025",
@@ -78,11 +81,13 @@ const MOCK_BOOKINGS: BookingWithEvent[] = [
   {
     id: "booking-002",
     user_id: "user-1",
-    reservation_id: "res-002",
+    event_id: "event-2",
+    zone_id: "zone-2",
+    quantity: 2,
     status: "pending",
-    total_amount: 3200,
-    created_at: "2025-12-10T14:20:00Z",
-    updated_at: "2025-12-10T14:20:00Z",
+    total_price: 3200,
+    reserved_at: "2025-12-10T14:20:00Z",
+    expires_at: "2025-12-10T14:30:00Z",
     event: {
       id: "event-2",
       title: "Ed Sheeran + - = ÷ x Tour",
@@ -100,11 +105,14 @@ const MOCK_BOOKINGS: BookingWithEvent[] = [
   {
     id: "booking-003",
     user_id: "user-1",
-    reservation_id: "res-003",
+    event_id: "event-3",
+    zone_id: "zone-3",
+    quantity: 3,
     status: "completed",
-    total_amount: 1800,
-    created_at: "2025-11-20T09:15:00Z",
-    updated_at: "2025-11-20T09:15:00Z",
+    total_price: 1800,
+    reserved_at: "2025-11-20T09:15:00Z",
+    confirmed_at: "2025-11-20T09:20:00Z",
+    expires_at: "2025-11-20T09:25:00Z",
     event: {
       id: "event-3",
       title: "Jazz Festival 2025",
@@ -122,11 +130,13 @@ const MOCK_BOOKINGS: BookingWithEvent[] = [
   {
     id: "booking-004",
     user_id: "user-1",
-    reservation_id: "res-004",
+    event_id: "event-4",
+    zone_id: "zone-4",
+    quantity: 1,
     status: "cancelled",
-    total_amount: 5500,
-    created_at: "2025-10-05T16:45:00Z",
-    updated_at: "2025-10-06T08:30:00Z",
+    total_price: 5500,
+    reserved_at: "2025-10-05T16:45:00Z",
+    expires_at: "2025-10-05T16:55:00Z",
     event: {
       id: "event-4",
       title: "Taylor Swift Eras Tour",
@@ -260,10 +270,10 @@ function BookingCard({ booking }: { booking: BookingWithEvent }) {
           </div>
 
           <div className="text-xs text-muted-foreground">
-            Booked on {new Date(booking.created_at).toLocaleDateString("en-US", { 
-              year: "numeric", 
-              month: "short", 
-              day: "numeric" 
+            Booked on {new Date(booking.reserved_at).toLocaleDateString("en-US", {
+              year: "numeric",
+              month: "short",
+              day: "numeric"
             })}
           </div>
         </div>
@@ -273,7 +283,7 @@ function BookingCard({ booking }: { booking: BookingWithEvent }) {
           <div className="text-right">
             <p className="text-xs text-muted-foreground">Total</p>
             <p className="text-2xl font-bold bg-linear-to-r from-primary to-amber-400 bg-clip-text text-transparent">
-              ฿{booking.total_amount.toLocaleString()}
+              ฿{booking.total_price.toLocaleString()}
             </p>
           </div>
           

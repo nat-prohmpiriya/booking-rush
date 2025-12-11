@@ -30,6 +30,32 @@ export const eventsApi = {
   async getById(id: string): Promise<EventResponse> {
     return apiClient.get<EventResponse>(`/events/id/${id}`)
   },
+
+  // Alias for getById - used by checkout page
+  async getEvent(eventId: string): Promise<EventResponse> {
+    return apiClient.get<EventResponse>(`/events/id/${eventId}`)
+  },
+
+  // Get shows for an event by slug
+  async getEventShowsBySlug(slug: string): Promise<ShowResponse[]> {
+    const response = await apiClient.get<ShowListResponse>(`/events/${slug}/shows`)
+    return response.data
+  },
+
+  // Get shows for an event by ID (fetches event first to get slug)
+  async getEventShows(eventId: string): Promise<ShowResponse[]> {
+    // First get the event to obtain the slug
+    const event = await apiClient.get<EventResponse>(`/events/id/${eventId}`)
+    // Then fetch shows using the slug
+    const response = await apiClient.get<ShowListResponse>(`/events/${event.slug}/shows`)
+    return response.data
+  },
+
+  // Get zones for a show
+  async getShowZones(showId: string): Promise<ShowZoneResponse[]> {
+    const response = await apiClient.get<ShowZoneListResponse>(`/shows/${showId}/zones`)
+    return response.data
+  },
 }
 
 export const showsApi = {
