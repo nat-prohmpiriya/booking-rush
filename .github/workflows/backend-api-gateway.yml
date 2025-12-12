@@ -1,11 +1,12 @@
-name: Build API Gateway
+name: Build API GATEWAY
 
 on:
   workflow_dispatch:
   push:
-    branches: [main]        # trigger เมื่อ push ไป main
+    branches: [main]
     paths:
-      - 'backend-api-gateway/**'   # เฉพาะแก้ folder นี้
+      - 'backend-api-gateway/**'
+      - 'pkg/**'
 
 jobs:
   build:
@@ -25,6 +26,7 @@ jobs:
       - name: Build & Push
         uses: docker/build-push-action@v5
         with:
-          context: ./backend-api-gateway
+          context: .
           push: true
-          tags: ghcr.io/${{ github.repository }}/backend-api-gateway:latest
+          build-args: SERVICE=backend-api-gateway
+          tags: ghcr.io/${{ github.repository }}/api-gateway:latest
