@@ -9,6 +9,7 @@
 .env.local
 .env.*.local
 !.env.example
+.env.prod
 
 # -----------------------------------------------------------------------------
 # Go
@@ -131,3 +132,4 @@ docs/api/generated/
 CLAUDE.md
 .claude
 .interview
+secrets.yaml
