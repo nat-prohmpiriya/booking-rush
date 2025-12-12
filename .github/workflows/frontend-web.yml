@@ -50,7 +50,7 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
           build-args: |
-            NEXT_PUBLIC_API_URL=https://api-booking-rush.dackbox.com
+            NEXT_PUBLIC_API_URL=https://api-booking-rush.dackbox.com/api/v1
 
   deploy:
     name: Deploy to k3s
