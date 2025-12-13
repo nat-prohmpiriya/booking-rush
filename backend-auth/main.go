@@ -59,15 +59,15 @@ func main() {
 	}
 	defer telemetry.Shutdown(ctx)
 
-	// Initialize database connection
+	// Initialize database connection (uses AuthDatabase config)
 	var db *database.PostgresDB
 	dbCfg := &database.PostgresConfig{
-		Host:            cfg.Database.Host,
-		Port:            cfg.Database.Port,
-		User:            cfg.Database.User,
-		Password:        cfg.Database.Password,
-		Database:        cfg.Database.DBName,
-		SSLMode:         cfg.Database.SSLMode,
+		Host:            cfg.AuthDatabase.Host,
+		Port:            cfg.AuthDatabase.Port,
+		User:            cfg.AuthDatabase.User,
+		Password:        cfg.AuthDatabase.Password,
+		Database:        cfg.AuthDatabase.DBName,
+		SSLMode:         cfg.AuthDatabase.SSLMode,
 		MaxConns:        50,
 		MinConns:        10,
 		MaxConnLifetime: 30 * time.Minute,

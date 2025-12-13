@@ -14,6 +14,10 @@ NC := \033[0m # No Color
 DATABASE_URL ?= postgres://postgres:postgres@localhost:5432/booking_rush?sslmode=disable
 MIGRATIONS_PATH ?= scripts/migrations
 
+# Per-service database URLs
+AUTH_DATABASE_URL ?= postgres://postgres:postgres@localhost:5432/auth_db?sslmode=disable
+TICKET_DATABASE_URL ?= postgres://postgres:postgres@localhost:5432/ticket_db?sslmode=disable
+
 # Default target
 help:
 	@echo "$(GREEN)Booking Rush 10k RPS - Available Commands$(NC)"
@@ -243,6 +247,72 @@ ifndef VERSION
 endif
 	@echo "$(YELLOW)Forcing migration version to: $(VERSION)$(NC)"
 	migrate -path $(MIGRATIONS_PATH) -database "$(DATABASE_URL)" force $(VERSION)
+
+# ================================
+# Per-Service Migrations
+# ================================
+
+# Auth service migrations
+migrate-auth-up:
+	@echo "$(GREEN)Running Auth DB migrations up...$(NC)"
+	migrate -path scripts/migrations/auth -database "$(AUTH_DATABASE_URL)" up
+	@echo "$(GREEN)Auth DB migrations completed$(NC)"
+
+migrate-auth-down:
+	@echo "$(YELLOW)Rolling back Auth DB migration...$(NC)"
+	migrate -path scripts/migrations/auth -database "$(AUTH_DATABASE_URL)" down 1
+	@echo "$(GREEN)Auth DB rollback completed$(NC)"
+
+migrate-auth-status:
+	@echo "$(GREEN)Auth DB migration status:$(NC)"
+	migrate -path scripts/migrations/auth -database "$(AUTH_DATABASE_URL)" version
+
+migrate-auth-create:
+ifndef NAME
+	$(error NAME is required. Usage: make migrate-auth-create NAME=create_something)
+endif
+	@echo "$(GREEN)Creating Auth DB migration: $(NAME)$(NC)"
+	migrate create -ext sql -dir scripts/migrations/auth -seq $(NAME)
+	@echo "$(GREEN)Auth DB migration files created$(NC)"
+
+# Ticket service migrations
+migrate-ticket-up:
+	@echo "$(GREEN)Running Ticket DB migrations up...$(NC)"
+	migrate -path scripts/migrations/ticket -database "$(TICKET_DATABASE_URL)" up
+	@echo "$(GREEN)Ticket DB migrations completed$(NC)"
+
+migrate-ticket-down:
+	@echo "$(YELLOW)Rolling back Ticket DB migration...$(NC)"
+	migrate -path scripts/migrations/ticket -database "$(TICKET_DATABASE_URL)" down 1
+	@echo "$(GREEN)Ticket DB rollback completed$(NC)"
+
+migrate-ticket-status:
+	@echo "$(GREEN)Ticket DB migration status:$(NC)"
+	migrate -path scripts/migrations/ticket -database "$(TICKET_DATABASE_URL)" version
+
+migrate-ticket-create:
+ifndef NAME
+	$(error NAME is required. Usage: make migrate-ticket-create NAME=create_something)
+endif
+	@echo "$(GREEN)Creating Ticket DB migration: $(NAME)$(NC)"
+	migrate create -ext sql -dir scripts/migrations/ticket -seq $(NAME)
+	@echo "$(GREEN)Ticket DB migration files created$(NC)"
+
+# Run all service migrations
+migrate-all-up: migrate-auth-up migrate-ticket-up
+	@echo "$(GREEN)All service migrations completed$(NC)"
+
+migrate-all-down:
+	@echo "$(YELLOW)Rolling back all service migrations...$(NC)"
+	-migrate -path scripts/migrations/ticket -database "$(TICKET_DATABASE_URL)" down 1
+	-migrate -path scripts/migrations/auth -database "$(AUTH_DATABASE_URL)" down 1
+	@echo "$(GREEN)All service rollbacks completed$(NC)"
+
+migrate-all-status:
+	@echo "$(GREEN)Auth DB:$(NC)"
+	-migrate -path scripts/migrations/auth -database "$(AUTH_DATABASE_URL)" version
+	@echo "$(GREEN)Ticket DB:$(NC)"
+	-migrate -path scripts/migrations/ticket -database "$(TICKET_DATABASE_URL)" version
 
 # ================================
 # Testing

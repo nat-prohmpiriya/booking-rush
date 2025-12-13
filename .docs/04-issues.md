@@ -1,2 +1,2 @@
-- [] pool เต็ม คืออะไร และจะแก้ไขอย่างไร
-- [] วิธีการตรวจสอบและแก้ไขปัญหาเกี่ยวกับ pool เต็ม
+- [] datbase ยังไม่แยกตามหลัก micro service
+- [] deployment every service 

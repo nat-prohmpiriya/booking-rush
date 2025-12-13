@@ -59,15 +59,15 @@ func main() {
 	}
 	defer telemetry.Shutdown(ctx)
 
-	// Initialize database connection
+	// Initialize database connection (uses TicketDatabase config)
 	var db *database.PostgresDB
 	dbCfg := &database.PostgresConfig{
-		Host:            cfg.Database.Host,
-		Port:            cfg.Database.Port,
-		User:            cfg.Database.User,
-		Password:        cfg.Database.Password,
-		Database:        cfg.Database.DBName,
-		SSLMode:         cfg.Database.SSLMode,
+		Host:            cfg.TicketDatabase.Host,
+		Port:            cfg.TicketDatabase.Port,
+		User:            cfg.TicketDatabase.User,
+		Password:        cfg.TicketDatabase.Password,
+		Database:        cfg.TicketDatabase.DBName,
+		SSLMode:         cfg.TicketDatabase.SSLMode,
 		MaxConns:        50,
 		MinConns:        10,
 		MaxConnLifetime: 30 * time.Minute,

@@ -10,14 +10,16 @@ import (
 
 // Config holds all application configuration
 type Config struct {
-	App      AppConfig      `mapstructure:"app"`
-	Server   ServerConfig   `mapstructure:"server"`
-	Database DatabaseConfig `mapstructure:"database"`
-	Redis    RedisConfig    `mapstructure:"redis"`
-	Kafka    KafkaConfig    `mapstructure:"kafka"`
-	MongoDB  MongoDBConfig  `mapstructure:"mongodb"`
-	JWT      JWTConfig      `mapstructure:"jwt"`
-	OTel     OTelConfig     `mapstructure:"otel"`
+	App            AppConfig      `mapstructure:"app"`
+	Server         ServerConfig   `mapstructure:"server"`
+	Database       DatabaseConfig `mapstructure:"database"`        // Legacy/default database
+	AuthDatabase   DatabaseConfig `mapstructure:"auth_database"`   // Auth service database
+	TicketDatabase DatabaseConfig `mapstructure:"ticket_database"` // Ticket service database
+	Redis          RedisConfig    `mapstructure:"redis"`
+	Kafka          KafkaConfig    `mapstructure:"kafka"`
+	MongoDB        MongoDBConfig  `mapstructure:"mongodb"`
+	JWT            JWTConfig      `mapstructure:"jwt"`
+	OTel           OTelConfig     `mapstructure:"otel"`
 }
 
 // AppConfig holds application-level settings
@@ -184,7 +186,7 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("SERVER_WRITE_TIMEOUT", "30s")
 	v.SetDefault("SERVER_IDLE_TIMEOUT", "120s")
 
-	// Database defaults
+	// Database defaults (legacy/shared)
 	v.SetDefault("DATABASE_HOST", "localhost")
 	v.SetDefault("DATABASE_PORT", 5432)
 	v.SetDefault("DATABASE_USER", "postgres")
@@ -195,6 +197,30 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("DATABASE_MAX_IDLE_CONNS", 10)
 	v.SetDefault("DATABASE_CONN_MAX_LIFETIME", "1h")
 	v.SetDefault("DATABASE_CONN_MAX_IDLE_TIME", "30m")
+
+	// Auth Database defaults (falls back to DATABASE_* if not set)
+	v.SetDefault("AUTH_DATABASE_HOST", "")
+	v.SetDefault("AUTH_DATABASE_PORT", 5432)
+	v.SetDefault("AUTH_DATABASE_USER", "postgres")
+	v.SetDefault("AUTH_DATABASE_PASSWORD", "postgres")
+	v.SetDefault("AUTH_DATABASE_DBNAME", "auth_db")
+	v.SetDefault("AUTH_DATABASE_SSLMODE", "disable")
+	v.SetDefault("AUTH_DATABASE_MAX_OPEN_CONNS", 100)
+	v.SetDefault("AUTH_DATABASE_MAX_IDLE_CONNS", 10)
+	v.SetDefault("AUTH_DATABASE_CONN_MAX_LIFETIME", "1h")
+	v.SetDefault("AUTH_DATABASE_CONN_MAX_IDLE_TIME", "30m")
+
+	// Ticket Database defaults (falls back to DATABASE_* if not set)
+	v.SetDefault("TICKET_DATABASE_HOST", "")
+	v.SetDefault("TICKET_DATABASE_PORT", 5432)
+	v.SetDefault("TICKET_DATABASE_USER", "postgres")
+	v.SetDefault("TICKET_DATABASE_PASSWORD", "postgres")
+	v.SetDefault("TICKET_DATABASE_DBNAME", "ticket_db")
+	v.SetDefault("TICKET_DATABASE_SSLMODE", "disable")
+	v.SetDefault("TICKET_DATABASE_MAX_OPEN_CONNS", 100)
+	v.SetDefault("TICKET_DATABASE_MAX_IDLE_CONNS", 10)
+	v.SetDefault("TICKET_DATABASE_CONN_MAX_LIFETIME", "1h")
+	v.SetDefault("TICKET_DATABASE_CONN_MAX_IDLE_TIME", "30m")
 
 	// Redis defaults
 	v.SetDefault("REDIS_HOST", "localhost")
@@ -243,7 +269,7 @@ func bindConfig(v *viper.Viper, cfg *Config) error {
 	cfg.Server.WriteTimeout = v.GetDuration("SERVER_WRITE_TIMEOUT")
 	cfg.Server.IdleTimeout = v.GetDuration("SERVER_IDLE_TIMEOUT")
 
-	// Database
+	// Database (legacy/shared)
 	cfg.Database.Host = v.GetString("DATABASE_HOST")
 	cfg.Database.Port = v.GetInt("DATABASE_PORT")
 	cfg.Database.User = v.GetString("DATABASE_USER")
@@ -254,6 +280,42 @@ func bindConfig(v *viper.Viper, cfg *Config) error {
 	cfg.Database.MaxIdleConns = v.GetInt("DATABASE_MAX_IDLE_CONNS")
 	cfg.Database.ConnMaxLifetime = v.GetDuration("DATABASE_CONN_MAX_LIFETIME")
 	cfg.Database.ConnMaxIdleTime = v.GetDuration("DATABASE_CONN_MAX_IDLE_TIME")
+
+	// Auth Database (falls back to Database if AUTH_DATABASE_HOST is empty)
+	authHost := v.GetString("AUTH_DATABASE_HOST")
+	if authHost == "" {
+		// Fallback to default Database config
+		cfg.AuthDatabase = cfg.Database
+	} else {
+		cfg.AuthDatabase.Host = authHost
+		cfg.AuthDatabase.Port = v.GetInt("AUTH_DATABASE_PORT")
+		cfg.AuthDatabase.User = v.GetString("AUTH_DATABASE_USER")
+		cfg.AuthDatabase.Password = v.GetString("AUTH_DATABASE_PASSWORD")
+		cfg.AuthDatabase.DBName = v.GetString("AUTH_DATABASE_DBNAME")
+		cfg.AuthDatabase.SSLMode = v.GetString("AUTH_DATABASE_SSLMODE")
+		cfg.AuthDatabase.MaxOpenConns = v.GetInt("AUTH_DATABASE_MAX_OPEN_CONNS")
+		cfg.AuthDatabase.MaxIdleConns = v.GetInt("AUTH_DATABASE_MAX_IDLE_CONNS")
+		cfg.AuthDatabase.ConnMaxLifetime = v.GetDuration("AUTH_DATABASE_CONN_MAX_LIFETIME")
+		cfg.AuthDatabase.ConnMaxIdleTime = v.GetDuration("AUTH_DATABASE_CONN_MAX_IDLE_TIME")
+	}
+
+	// Ticket Database (falls back to Database if TICKET_DATABASE_HOST is empty)
+	ticketHost := v.GetString("TICKET_DATABASE_HOST")
+	if ticketHost == "" {
+		// Fallback to default Database config
+		cfg.TicketDatabase = cfg.Database
+	} else {
+		cfg.TicketDatabase.Host = ticketHost
+		cfg.TicketDatabase.Port = v.GetInt("TICKET_DATABASE_PORT")
+		cfg.TicketDatabase.User = v.GetString("TICKET_DATABASE_USER")
+		cfg.TicketDatabase.Password = v.GetString("TICKET_DATABASE_PASSWORD")
+		cfg.TicketDatabase.DBName = v.GetString("TICKET_DATABASE_DBNAME")
+		cfg.TicketDatabase.SSLMode = v.GetString("TICKET_DATABASE_SSLMODE")
+		cfg.TicketDatabase.MaxOpenConns = v.GetInt("TICKET_DATABASE_MAX_OPEN_CONNS")
+		cfg.TicketDatabase.MaxIdleConns = v.GetInt("TICKET_DATABASE_MAX_IDLE_CONNS")
+		cfg.TicketDatabase.ConnMaxLifetime = v.GetDuration("TICKET_DATABASE_CONN_MAX_LIFETIME")
+		cfg.TicketDatabase.ConnMaxIdleTime = v.GetDuration("TICKET_DATABASE_CONN_MAX_IDLE_TIME")
+	}
 
 	// Redis
 	cfg.Redis.Host = v.GetString("REDIS_HOST")
