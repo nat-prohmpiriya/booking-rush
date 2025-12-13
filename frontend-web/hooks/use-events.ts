@@ -199,8 +199,8 @@ export function useZonesByShow(showId: string): UseZonesReturn {
       setIsLoading(true)
       setError(null)
       try {
-        const response = await zonesApi.listByShow(showId)
-        const apiZones = response.data || []
+        // Use eventsApi.getShowZones which defaults to isActive=true for customers
+        const apiZones = await eventsApi.getShowZones(showId)
         setZones(apiZones.map((zone: ShowZoneResponse): TicketZoneDisplay => ({
           id: zone.id,
           name: zone.name,
@@ -286,7 +286,7 @@ export function useEventDetail(eventId: string): EventDetailData & {
     fetchEventDetail()
   }, [eventId])
 
-  // Fetch zones when selected show changes
+  // Fetch zones when selected show changes (customer view - only active zones)
   useEffect(() => {
     async function fetchZones() {
       if (!selectedShow) {
@@ -295,8 +295,8 @@ export function useEventDetail(eventId: string): EventDetailData & {
       }
 
       try {
-        const response = await zonesApi.listByShow(selectedShow.id)
-        const apiZones = response.data || []
+        // Use eventsApi.getShowZones which defaults to isActive=true for customers
+        const apiZones = await eventsApi.getShowZones(selectedShow.id)
         setZones(apiZones.map((zone: ShowZoneResponse): TicketZoneDisplay => ({
           id: zone.id,
           name: zone.name,

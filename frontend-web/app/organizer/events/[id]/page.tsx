@@ -89,11 +89,11 @@ export default function EditEventPage() {
       const showsData = await eventsApi.getEventShows(eventId)
       setShows(showsData)
 
-      // Load zones for each show
+      // Load zones for each show (organizer sees ALL zones, including inactive)
       const zonesMap: Record<string, ShowZoneResponse[]> = {}
       for (const show of showsData) {
-        const zones = await eventsApi.getShowZones(show.id)
-        zonesMap[show.id] = zones
+        const zonesResponse = await zonesApi.listByShow(show.id)
+        zonesMap[show.id] = zonesResponse.data
       }
       setZonesByShow(zonesMap)
     } catch (err) {
@@ -786,8 +786,11 @@ export default function EditEventPage() {
                                   style={{ backgroundColor: zone.color || "#888" }}
                                 />
                                 <div>
-                                  <div className="font-medium">
-                                    {zone.name}
+                                  <div className="flex items-center gap-2">
+                                    <span className="font-medium">{zone.name}</span>
+                                    {!zone.is_active && (
+                                      <Badge variant="secondary" className="text-xs">Inactive</Badge>
+                                    )}
                                   </div>
                                   <div className="text-sm text-muted-foreground">
                                     {zone.price.toLocaleString()} THB &bull; {zone.available_seats}/{zone.total_seats} available
@@ -795,6 +798,29 @@ export default function EditEventPage() {
                                 </div>
                               </div>
                               <div className="flex items-center gap-4">
+                                {/* Active Toggle */}
+                                <div className="flex items-center gap-2">
+                                  <span className="text-xs text-muted-foreground">
+                                    {zone.is_active ? "Active" : "Inactive"}
+                                  </span>
+                                  <Switch
+                                    checked={zone.is_active}
+                                    onCheckedChange={async (checked) => {
+                                      try {
+                                        setIsSaving(true)
+                                        await zonesApi.update(zone.id, { is_active: checked })
+                                        await loadEventData()
+                                        setSuccessMessage(`Zone ${checked ? "activated" : "deactivated"}!`)
+                                        setTimeout(() => setSuccessMessage(""), 3000)
+                                      } catch (err) {
+                                        setError("Failed to update zone status")
+                                      } finally {
+                                        setIsSaving(false)
+                                      }
+                                    }}
+                                    disabled={isSaving}
+                                  />
+                                </div>
                                 {/* Edit Button */}
                                 <Button
                                   variant="ghost"

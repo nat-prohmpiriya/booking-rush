@@ -43,18 +43,17 @@ func (s *zoneSyncer) SyncByShowID(ctx context.Context, showID string) error {
 		return nil
 	}
 
-	// Get all zones for this show
-	zones, _, err := s.showZoneRepo.GetByShowID(ctx, showID, 1000, 0)
+	// Get only active zones for this show
+	isActive := true
+	zones, _, err := s.showZoneRepo.GetByShowID(ctx, showID, &isActive, 1000, 0)
 	if err != nil {
 		return fmt.Errorf("failed to get zones for show %s: %w", showID, err)
 	}
 
-	// Sync each active zone to Redis
+	// Sync each zone to Redis (already filtered to active only)
 	for _, zone := range zones {
-		if zone.IsActive {
-			if err := s.SyncZone(ctx, zone); err != nil {
-				return err
-			}
+		if err := s.SyncZone(ctx, zone); err != nil {
+			return err
 		}
 	}
 
@@ -67,8 +66,8 @@ func (s *zoneSyncer) RemoveByShowID(ctx context.Context, showID string) error {
 		return nil
 	}
 
-	// Get all zones for this show
-	zones, _, err := s.showZoneRepo.GetByShowID(ctx, showID, 1000, 0)
+	// Get all zones for this show (including inactive ones to clean up Redis)
+	zones, _, err := s.showZoneRepo.GetByShowID(ctx, showID, nil, 1000, 0)
 	if err != nil {
 		return fmt.Errorf("failed to get zones for show %s: %w", showID, err)
 	}

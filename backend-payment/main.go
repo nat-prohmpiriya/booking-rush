@@ -77,7 +77,7 @@ func main() {
 		Password:        cfg.PaymentDatabase.Password,
 		Database:        cfg.PaymentDatabase.DBName,
 		SSLMode:         cfg.PaymentDatabase.SSLMode,
-		MaxConns:        10,               // Optimized: async processing via Kafka
+		MaxConns:        10, // Optimized: async processing via Kafka
 		MinConns:        2,
 		MaxConnLifetime: 30 * time.Minute,
 		MaxConnIdleTime: 5 * time.Minute,

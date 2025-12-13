@@ -91,14 +91,15 @@ func (h *WebhookHandler) handlePaymentIntentSucceeded(c *gin.Context, event stri
 	log.Info(fmt.Sprintf("Payment succeeded: payment_id=%s, booking_id=%s, amount=%d %s",
 		paymentID, bookingID, paymentIntent.Amount, paymentIntent.Currency))
 
-	// Process the payment if we have payment_id
+	// Complete the payment if we have payment_id
+	// Use CompletePaymentFromWebhook instead of ProcessPayment to avoid creating new PaymentIntent
 	if paymentID != "" {
-		payment, err := h.paymentService.ProcessPayment(c.Request.Context(), paymentID)
+		payment, err := h.paymentService.CompletePaymentFromWebhook(c.Request.Context(), paymentID, paymentIntent.ID)
 		if err != nil {
-			log.Error(fmt.Sprintf("Failed to process payment %s: %v", paymentID, err))
+			log.Error(fmt.Sprintf("Failed to complete payment %s: %v", paymentID, err))
 			// Still return 200 to acknowledge receipt
 		} else {
-			log.Info(fmt.Sprintf("Payment %s processed successfully, status: %s", paymentID, payment.Status))
+			log.Info(fmt.Sprintf("Payment %s completed successfully, status: %s", paymentID, payment.Status))
 		}
 	}
 
@@ -119,19 +120,23 @@ func (h *WebhookHandler) handlePaymentIntentFailed(c *gin.Context, event stripe.
 	paymentID := paymentIntent.Metadata["payment_id"]
 	bookingID := paymentIntent.Metadata["booking_id"]
 
+	failureCode := "PAYMENT_FAILED"
 	failureMessage := "Payment failed"
 	if paymentIntent.LastPaymentError != nil {
 		failureMessage = paymentIntent.LastPaymentError.Msg
+		if paymentIntent.LastPaymentError.Code != "" {
+			failureCode = string(paymentIntent.LastPaymentError.Code)
+		}
 	}
 
 	log.Warn(fmt.Sprintf("Payment failed: payment_id=%s, booking_id=%s, reason=%s",
 		paymentID, bookingID, failureMessage))
 
-	// Cancel the payment if we have payment_id
+	// Mark the payment as failed if we have payment_id
 	if paymentID != "" {
-		_, err := h.paymentService.CancelPayment(c.Request.Context(), paymentID)
+		_, err := h.paymentService.FailPaymentFromWebhook(c.Request.Context(), paymentID, failureCode, failureMessage)
 		if err != nil {
-			log.Error(fmt.Sprintf("Failed to cancel payment %s: %v", paymentID, err))
+			log.Error(fmt.Sprintf("Failed to mark payment %s as failed: %v", paymentID, err))
 		}
 	}
 

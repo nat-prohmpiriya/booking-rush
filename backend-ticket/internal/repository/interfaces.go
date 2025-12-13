@@ -122,8 +122,8 @@ type ShowZoneRepository interface {
 	Create(ctx context.Context, zone *domain.ShowZone) error
 	// GetByID retrieves a show zone by ID
 	GetByID(ctx context.Context, id string) (*domain.ShowZone, error)
-	// GetByShowID retrieves all zones for a show with pagination
-	GetByShowID(ctx context.Context, showID string, limit, offset int) ([]*domain.ShowZone, int, error)
+	// GetByShowID retrieves all zones for a show with pagination and optional is_active filter
+	GetByShowID(ctx context.Context, showID string, isActive *bool, limit, offset int) ([]*domain.ShowZone, int, error)
 	// Update updates a show zone
 	Update(ctx context.Context, zone *domain.ShowZone) error
 	// Delete soft deletes a show zone by ID

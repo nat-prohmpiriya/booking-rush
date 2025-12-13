@@ -393,8 +393,8 @@ function CheckoutContent() {
     // Direct mode: use reservation data
     if (mode === "direct" && reservation) {
       const subtotal = reservation.total_price
-      const serviceFee = Math.round(subtotal * 0.05) // 5% service fee
-      const total = subtotal + serviceFee
+      const serviceFee = 0 // No service fee - platform absorbs payment processing costs
+      const total = subtotal
 
       // Try to get zone info for display
       const zone = zones.length > 0 ? zones[0] : null
@@ -432,8 +432,8 @@ function CheckoutContent() {
     })
 
     const subtotal = items.reduce((sum, item) => sum + item.subtotal, 0)
-    const serviceFee = Math.round(subtotal * 0.05) // 5% service fee
-    const total = subtotal + serviceFee
+    const serviceFee = 0 // No service fee - platform absorbs payment processing costs
+    const total = subtotal
 
     return { items, subtotal, serviceFee, total }
   }, [mode, reservation, queueData, zones])
@@ -442,6 +442,8 @@ function CheckoutContent() {
 
   // Handle successful Stripe payment
   const handlePaymentSuccess = async (paymentIntentId: string) => {
+    // Guard against duplicate calls
+    if (checkoutState === "processing" || checkoutState === "success") return
     if (!reservation?.booking_id || !paymentIntent?.payment_id) return
 
     setCheckoutState("processing")
@@ -753,11 +755,6 @@ function CheckoutContent() {
                       <span>฿{item.subtotal.toLocaleString()}</span>
                     </div>
                   ))}
-                  <div className="flex justify-between text-sm text-gray-300">
-                    <span>Service Fee (5%)</span>
-                    <span>฿{orderSummary.serviceFee.toLocaleString()}</span>
-                  </div>
-
                   <Separator className="bg-gray-700" />
 
                   <div className="flex justify-between text-lg font-bold text-white">

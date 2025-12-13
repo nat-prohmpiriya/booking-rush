@@ -101,7 +101,7 @@ func (s *showZoneService) ListZonesByShow(ctx context.Context, showID string, fi
 		return nil, 0, ErrShowNotFound
 	}
 
-	return s.showZoneRepo.GetByShowID(ctx, showID, filter.Limit, filter.Offset)
+	return s.showZoneRepo.GetByShowID(ctx, showID, filter.IsActive, filter.Limit, filter.Offset)
 }
 
 // UpdateShowZone updates a show zone

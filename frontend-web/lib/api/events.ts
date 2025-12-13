@@ -126,9 +126,11 @@ export const eventsApi = {
     return response.data
   },
 
-  // Get zones for a show
-  async getShowZones(showId: string): Promise<ShowZoneResponse[]> {
-    const response = await apiClient.get<ShowZoneListResponse>(`/shows/${showId}/zones`)
+  // Get zones for a show (for customer - only active zones by default)
+  async getShowZones(showId: string, isActive: boolean = true): Promise<ShowZoneResponse[]> {
+    const params = new URLSearchParams()
+    params.append("is_active", isActive.toString())
+    const response = await apiClient.get<ShowZoneListResponse>(`/shows/${showId}/zones?${params.toString()}`)
     return response.data
   },
 }
@@ -160,10 +162,12 @@ export const showsApi = {
 }
 
 export const zonesApi = {
-  async listByShow(showId: string, limit?: number, offset?: number): Promise<ShowZoneListResponse> {
+  // For organizer - can filter by is_active or get all (isActive = undefined)
+  async listByShow(showId: string, options?: { limit?: number; offset?: number; isActive?: boolean }): Promise<ShowZoneListResponse> {
     const params = new URLSearchParams()
-    if (limit) params.append("limit", limit.toString())
-    if (offset) params.append("offset", offset.toString())
+    if (options?.limit) params.append("limit", options.limit.toString())
+    if (options?.offset) params.append("offset", options.offset.toString())
+    if (options?.isActive !== undefined) params.append("is_active", options.isActive.toString())
 
     const queryString = params.toString()
     const endpoint = queryString

@@ -81,9 +81,10 @@ type ShowZoneListResponse struct {
 
 // ShowZoneListFilter represents filters for listing show zones
 type ShowZoneListFilter struct {
-	ShowID string `form:"-"`
-	Limit  int    `form:"limit"`
-	Offset int    `form:"offset"`
+	ShowID   string `form:"-"`
+	IsActive *bool  `form:"is_active"`
+	Limit    int    `form:"limit"`
+	Offset   int    `form:"offset"`
 }
 
 // SetDefaults sets default values for pagination
