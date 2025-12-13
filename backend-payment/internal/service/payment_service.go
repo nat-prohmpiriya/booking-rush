@@ -8,6 +8,7 @@ import (
 
 // CreatePaymentRequest represents a request to create a payment (internal)
 type CreatePaymentRequest struct {
+	TenantID  string
 	BookingID string
 	UserID    string
 	Amount    float64

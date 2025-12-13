@@ -52,8 +52,9 @@ func (s *paymentServiceImpl) CreatePayment(ctx context.Context, req *CreatePayme
 		return nil, domain.ErrPaymentAlreadyExists
 	}
 
-	// Create new payment
+	// Create new payment with TenantID
 	payment, err := domain.NewPayment(
+		req.TenantID,
 		req.BookingID,
 		req.UserID,
 		req.Amount,
@@ -106,8 +107,8 @@ func (s *paymentServiceImpl) ProcessPayment(ctx context.Context, paymentID strin
 
 	chargeResp, err := s.gateway.Charge(ctx, chargeReq)
 	if err != nil {
-		// Mark as failed
-		payment.Fail(err.Error())
+		// Mark as failed with error details
+		payment.Fail("GATEWAY_ERROR", err.Error())
 		s.repo.Update(ctx, payment)
 		return payment, nil
 	}
@@ -118,7 +119,7 @@ func (s *paymentServiceImpl) ProcessPayment(ctx context.Context, paymentID strin
 			return nil, fmt.Errorf("failed to complete payment: %w", err)
 		}
 	} else {
-		if err := payment.Fail(chargeResp.FailureReason); err != nil {
+		if err := payment.Fail("PAYMENT_FAILED", chargeResp.FailureReason); err != nil {
 			return nil, fmt.Errorf("failed to mark payment as failed: %w", err)
 		}
 	}
@@ -160,13 +161,13 @@ func (s *paymentServiceImpl) RefundPayment(ctx context.Context, paymentID string
 		return nil, err
 	}
 
-	// Process refund through gateway
-	if err := s.gateway.Refund(ctx, payment.TransactionID, payment.Amount); err != nil {
+	// Process refund through gateway using GatewayPaymentID
+	if err := s.gateway.Refund(ctx, payment.GatewayPaymentID, payment.Amount); err != nil {
 		return nil, fmt.Errorf("failed to process refund: %w", err)
 	}
 
-	// Mark as refunded
-	if err := payment.Refund(); err != nil {
+	// Mark as refunded with amount and reason
+	if err := payment.Refund(payment.Amount, reason); err != nil {
 		return nil, fmt.Errorf("failed to mark payment as refunded: %w", err)
 	}
 

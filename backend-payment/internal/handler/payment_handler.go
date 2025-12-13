@@ -42,6 +42,16 @@ func (h *PaymentHandler) CreatePayment(c *gin.Context) {
 		return
 	}
 
+	// Get tenant ID from context (set by auth middleware) or header
+	tenantID := c.GetHeader("X-Tenant-ID")
+	if tenantID == "" {
+		tenantID = c.GetString("tenant_id")
+	}
+	if tenantID == "" {
+		c.JSON(http.StatusUnauthorized, dto.NewErrorResponse("UNAUTHORIZED", "tenant_id is required"))
+		return
+	}
+
 	// Get user ID from context (set by auth middleware) or header for now
 	userID := c.GetHeader("X-User-ID")
 	if userID == "" {
@@ -54,6 +64,7 @@ func (h *PaymentHandler) CreatePayment(c *gin.Context) {
 
 	// Create payment request for service
 	svcReq := &service.CreatePaymentRequest{
+		TenantID:  tenantID,
 		BookingID: req.BookingID,
 		UserID:    userID,
 		Amount:    req.Amount,
@@ -271,6 +282,16 @@ func (h *PaymentHandler) CreatePaymentIntent(c *gin.Context) {
 		return
 	}
 
+	// Get tenant ID from context
+	tenantID := c.GetHeader("X-Tenant-ID")
+	if tenantID == "" {
+		tenantID = c.GetString("tenant_id")
+	}
+	if tenantID == "" {
+		c.JSON(http.StatusUnauthorized, dto.NewErrorResponse("UNAUTHORIZED", "tenant_id is required"))
+		return
+	}
+
 	// Get user ID from context
 	userID := c.GetHeader("X-User-ID")
 	if userID == "" {
@@ -289,6 +310,7 @@ func (h *PaymentHandler) CreatePaymentIntent(c *gin.Context) {
 
 	// Create payment record first
 	svcReq := &service.CreatePaymentRequest{
+		TenantID:  tenantID,
 		BookingID: req.BookingID,
 		UserID:    userID,
 		Amount:    req.Amount,
