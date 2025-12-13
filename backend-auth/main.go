@@ -68,8 +68,8 @@ func main() {
 		Password:        cfg.AuthDatabase.Password,
 		Database:        cfg.AuthDatabase.DBName,
 		SSLMode:         cfg.AuthDatabase.SSLMode,
-		MaxConns:        50,
-		MinConns:        10,
+		MaxConns:        10, // Optimized: auth has low DB usage
+		MinConns:        2,
 		MaxConnLifetime: 30 * time.Minute,
 		MaxConnIdleTime: 5 * time.Minute,
 		ConnectTimeout:  5 * time.Second,

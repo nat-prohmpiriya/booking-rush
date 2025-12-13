@@ -76,8 +76,8 @@ func main() {
 		Password:        cfg.BookingDatabase.Password,
 		Database:        cfg.BookingDatabase.DBName,
 		SSLMode:         cfg.BookingDatabase.SSLMode,
-		MaxConns:        200,              // Increased for 10k RPS
-		MinConns:        50,               // Keep minimum pool ready
+		MaxConns:        20,               // Optimized: Virtual Queue controls traffic, Redis handles inventory
+		MinConns:        5,
 		MaxConnLifetime: 30 * time.Minute, // Reduce to prevent stale connections
 		MaxConnIdleTime: 5 * time.Minute,  // Close idle connections sooner
 		ConnectTimeout:  5 * time.Second,  // Fast fail

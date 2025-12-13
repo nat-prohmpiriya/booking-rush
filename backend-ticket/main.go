@@ -68,8 +68,8 @@ func main() {
 		Password:        cfg.TicketDatabase.Password,
 		Database:        cfg.TicketDatabase.DBName,
 		SSLMode:         cfg.TicketDatabase.SSLMode,
-		MaxConns:        50,
-		MinConns:        10,
+		MaxConns:        10, // Optimized: uses Redis cache heavily
+		MinConns:        2,
 		MaxConnLifetime: 30 * time.Minute,
 		MaxConnIdleTime: 5 * time.Minute,
 		ConnectTimeout:  5 * time.Second,

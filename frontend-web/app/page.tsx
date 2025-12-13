@@ -1,9 +1,10 @@
 "use client"
 
+import { useMemo } from "react"
 import { Header } from "@/components/header"
 import { Hero } from "@/components/hero"
-import { EventCard } from "@/components/event-card"
-import { useEvents } from "@/hooks/use-events"
+import { EventSection } from "@/components/event-section"
+import { useEvents, type EventDisplay } from "@/hooks/use-events"
 import { Skeleton } from "@/components/ui/skeleton"
 
 function EventCardSkeleton() {
@@ -27,52 +28,111 @@ function EventCardSkeleton() {
   )
 }
 
+function LoadingSkeleton() {
+  return (
+    <div className="space-y-16">
+      <section className="space-y-8">
+        <div className="space-y-4">
+          <Skeleton className="h-8 w-32 rounded-full" />
+          <Skeleton className="h-10 w-64" />
+          <Skeleton className="h-6 w-96" />
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8">
+          <EventCardSkeleton />
+          <EventCardSkeleton />
+          <EventCardSkeleton />
+        </div>
+      </section>
+    </div>
+  )
+}
+
+interface CategorizedEvents {
+  onSale: EventDisplay[]
+  comingSoon: EventDisplay[]
+  pastEvents: EventDisplay[]
+}
+
+function categorizeEvents(events: EventDisplay[]): CategorizedEvents {
+  const now = new Date()
+
+  return events.reduce<CategorizedEvents>(
+    (acc, event) => {
+      const bookingStart = event.bookingStartAt ? new Date(event.bookingStartAt) : null
+      const bookingEnd = event.bookingEndAt ? new Date(event.bookingEndAt) : null
+
+      // Check if event is past (booking ended)
+      if (bookingEnd && bookingEnd < now) {
+        acc.pastEvents.push(event)
+      }
+      // Check if event is coming soon (booking not started yet)
+      else if (bookingStart && bookingStart > now) {
+        acc.comingSoon.push(event)
+      }
+      // Default: on sale (active or no specific booking window)
+      else {
+        acc.onSale.push(event)
+      }
+
+      return acc
+    },
+    { onSale: [], comingSoon: [], pastEvents: [] }
+  )
+}
+
 export default function Home() {
   const { events, isLoading } = useEvents()
+
+  const categorizedEvents = useMemo(() => categorizeEvents(events), [events])
 
   return (
     <main className="min-h-screen">
       <Header />
       <Hero />
 
-      {/* Featured Events Section */}
-      <section className="container mx-auto px-4 lg:px-8 py-16 lg:py-24">
-        <div className="space-y-4 mb-12">
-          <div className="inline-block glass px-4 py-2 rounded-full">
-            <span className="text-primary text-sm font-medium">Featured Events</span>
-          </div>
-          <h2 className="text-3xl lg:text-5xl font-bold text-balance">Upcoming Events</h2>
-          <p className="text-lg text-muted-foreground max-w-2xl text-pretty">
-            Discover the hottest events happening now. Book your tickets before they sell out.
-          </p>
-        </div>
+      <div className="container mx-auto px-4 lg:px-8 py-16 lg:py-24 space-y-20">
+        {isLoading ? (
+          <LoadingSkeleton />
+        ) : (
+          <>
+            {/* On Sale Events */}
+            <EventSection
+              badge="Hot"
+              badgeVariant="primary"
+              title="On Sale Now"
+              subtitle="Get your tickets before they sell out!"
+              events={categorizedEvents.onSale}
+            />
 
-        {/* Event Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8">
-          {isLoading ? (
-            <>
-              <EventCardSkeleton />
-              <EventCardSkeleton />
-              <EventCardSkeleton />
-              <EventCardSkeleton />
-              <EventCardSkeleton />
-              <EventCardSkeleton />
-            </>
-          ) : (
-            events.map((event) => (
-              <EventCard
-                key={event.id}
-                id={event.id}
-                title={event.title}
-                venue={event.venue}
-                date={event.date}
-                price={event.price}
-                image={event.image}
-              />
-            ))
-          )}
-        </div>
-      </section>
+            {/* Coming Soon Events */}
+            <EventSection
+              badge="Upcoming"
+              badgeVariant="warning"
+              title="Coming Soon"
+              subtitle="Opening for booking soon. Stay tuned!"
+              events={categorizedEvents.comingSoon}
+            />
+
+            {/* Past Events */}
+            <EventSection
+              badge="Archived"
+              badgeVariant="muted"
+              title="Past Events"
+              subtitle="Events that have ended."
+              events={categorizedEvents.pastEvents}
+            />
+
+            {/* Show message if no events at all */}
+            {events.length === 0 && (
+              <div className="text-center py-12">
+                <p className="text-xl text-muted-foreground">
+                  No events available at the moment.
+                </p>
+              </div>
+            )}
+          </>
+        )}
+      </div>
     </main>
   )
 }

@@ -8,6 +8,7 @@ CREATE TABLE IF NOT EXISTS users (
     tenant_id UUID REFERENCES tenants(id) ON DELETE CASCADE,
     email VARCHAR(255) NOT NULL,
     password_hash VARCHAR(255) NOT NULL,
+    name VARCHAR(255),
     first_name VARCHAR(100),
     last_name VARCHAR(100),
     phone VARCHAR(20),

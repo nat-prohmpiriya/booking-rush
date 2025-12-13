@@ -31,6 +31,7 @@ type UpdateShowZoneRequest struct {
 	TotalSeats  *int     `json:"total_seats" binding:"omitempty,gt=0"`
 	Description string   `json:"description" binding:"omitempty,max=1000"`
 	SortOrder   *int     `json:"sort_order" binding:"omitempty,gte=0"`
+	IsActive    *bool    `json:"is_active" binding:"omitempty"`
 }
 
 // Validate validates the UpdateShowZoneRequest

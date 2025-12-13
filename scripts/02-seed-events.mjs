@@ -1,13 +1,20 @@
 #!/usr/bin/env node
 
 /**
- * Seed Extra Events Script
- * Creates 20 additional events with shows and zones via API
+ * 02-seed-events.mjs
+ * Creates 30 events with shows and zones via API
+ *
+ * Usage: ADMIN_EMAIL="organizer@test.com" ADMIN_PASSWORD="Test123!" node scripts/02-seed-events.mjs
+ *
+ * Distribution:
+ * - OPEN (15): Events currently on sale
+ * - UPCOMING (8): Events opening soon
+ * - ENDED (7): Past events
  */
 
 const API_BASE_URL = process.env.API_BASE_URL || 'http://localhost:8080/api/v1';
-const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'test1@test.com';
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || '#Ttest1234';
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'organizer@test.com';
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'Test123!';
 
 let ACCESS_TOKEN = '';
 
@@ -16,7 +23,7 @@ const colors = {
   green: '\x1b[32m',
   yellow: '\x1b[33m',
   blue: '\x1b[34m',
-  magenta: '\x1b[35m',
+  cyan: '\x1b[36m',
   reset: '\x1b[0m'
 };
 
@@ -26,18 +33,23 @@ function log(color, message) {
 
 async function login() {
   log('yellow', '[Step 1] Logging in...');
+
   const res = await fetch(`${API_BASE_URL}/auth/login`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD })
   });
+
   const data = await res.json();
+
   if (!data.success || !data.data?.access_token) {
     log('red', `Login failed: ${JSON.stringify(data)}`);
+    log('yellow', '\nMake sure you have run: node scripts/01-seed-users.mjs');
     process.exit(1);
   }
+
   ACCESS_TOKEN = data.data.access_token;
-  log('green', `Login successful! Role: ${data.data.user.role}`);
+  log('green', `Login successful! Role: ${data.data.user.role}, Tenant: ${data.data.user.tenant_id || 'none'}`);
 }
 
 async function createEvent(eventData) {
@@ -49,12 +61,14 @@ async function createEvent(eventData) {
     },
     body: JSON.stringify(eventData)
   });
+
   const data = await res.json();
+
   if (!data.success) {
-    log('red', `  Failed to create event: ${JSON.stringify(data.error)}`);
+    log('red', `  Failed: ${JSON.stringify(data.error)}`);
     return null;
   }
-  log('green', `  Event created: ${data.data.id}`);
+
   return data.data.id;
 }
 
@@ -67,12 +81,9 @@ async function createShow(eventId, showData) {
     },
     body: JSON.stringify(showData)
   });
+
   const data = await res.json();
-  if (!data.success) {
-    log('red', `  Failed to create show: ${JSON.stringify(data.error)}`);
-    return null;
-  }
-  log('green', `  Show: ${showData.name}`);
+  if (!data.success) return null;
   return data.data.id;
 }
 
@@ -85,6 +96,7 @@ async function createZone(showId, zoneData) {
     },
     body: JSON.stringify(zoneData)
   });
+
   const data = await res.json();
   if (!data.success) return null;
   return data.data.id;
@@ -95,22 +107,152 @@ async function publishEvent(eventId) {
     method: 'POST',
     headers: { 'Authorization': `Bearer ${ACCESS_TOKEN}` }
   });
+
   const data = await res.json();
-  if (!data.success) {
-    log('red', `  Failed to publish: ${JSON.stringify(data.error)}`);
-    return false;
-  }
-  log('green', `  Published!`);
-  return true;
+  return data.success;
 }
 
+// ============================================================================
+// EVENT DEFINITIONS (30 Events)
+// ============================================================================
+
 const events = [
-  // === OPEN Events (10) ===
+  // ============================================================================
+  // OPEN EVENTS (15)
+  // ============================================================================
+  {
+    status: 'OPEN',
+    event: {
+      name: 'BTS World Tour: Love Yourself',
+      description: 'Experience the global phenomenon BTS live in Bangkok!',
+      short_description: 'BTS Live in Bangkok - World Tour 2025',
+      venue_name: 'Rajamangala National Stadium',
+      venue_address: '286 Ramkhamhaeng Rd',
+      city: 'Bangkok',
+      country: 'Thailand',
+      poster_url: 'https://images.unsplash.com/photo-1540039155733-5bb30b53aa14?w=800',
+      banner_url: 'https://images.unsplash.com/photo-1459749411175-04bf5292ceea?w=1600',
+      max_tickets_per_user: 4,
+      booking_start_at: '2025-12-01T10:00:00+07:00',
+      booking_end_at: '2025-12-30T23:59:59+07:00'
+    },
+    shows: [
+      { name: 'Night 1', show_date: '2025-12-31', start_time: '19:00:00+07:00', end_time: '23:00:00+07:00' },
+      { name: 'Night 2', show_date: '2026-01-01', start_time: '19:00:00+07:00', end_time: '23:00:00+07:00' }
+    ],
+    zones: [
+      { name: 'VVIP Standing', price: 12000, total_seats: 500, description: 'Front stage standing' },
+      { name: 'VIP Standing', price: 8500, total_seats: 1000, description: 'Premium standing' },
+      { name: 'Gold Seated', price: 5500, total_seats: 2000, description: 'Lower bowl' },
+      { name: 'Silver Seated', price: 3500, total_seats: 3000, description: 'Upper bowl' }
+    ]
+  },
+  {
+    status: 'OPEN',
+    event: {
+      name: 'Coldplay Music of the Spheres',
+      description: 'Coldplay returns to Bangkok with their spectacular World Tour.',
+      short_description: 'Coldplay World Tour 2026 - Bangkok',
+      venue_name: 'Rajamangala National Stadium',
+      venue_address: '286 Ramkhamhaeng Rd',
+      city: 'Bangkok',
+      country: 'Thailand',
+      poster_url: 'https://images.unsplash.com/photo-1470229722913-7c0e2dbbafd3?w=800',
+      banner_url: 'https://images.unsplash.com/photo-1429962714451-bb934ecdc4ec?w=1600',
+      max_tickets_per_user: 4,
+      booking_start_at: '2025-11-15T10:00:00+07:00',
+      booking_end_at: '2026-02-13T23:59:59+07:00'
+    },
+    shows: [
+      { name: 'Bangkok Show', show_date: '2026-02-14', start_time: '19:30:00+07:00', end_time: '22:30:00+07:00' }
+    ],
+    zones: [
+      { name: 'Infinity Ticket', price: 9500, total_seats: 1000, description: 'GA Standing' },
+      { name: 'A Reserve', price: 7500, total_seats: 2000, description: 'Premium seating' },
+      { name: 'B Reserve', price: 5500, total_seats: 3000, description: 'Standard seating' },
+      { name: 'C Reserve', price: 3500, total_seats: 4000, description: 'Value seating' }
+    ]
+  },
+  {
+    status: 'OPEN',
+    event: {
+      name: 'Muay Thai Super Fight Night',
+      description: 'Witness the best Muay Thai fighters from around the world.',
+      short_description: 'World Championship Muay Thai',
+      venue_name: 'Lumpinee Boxing Stadium',
+      venue_address: '6 Ramintra Rd',
+      city: 'Bangkok',
+      country: 'Thailand',
+      poster_url: 'https://images.unsplash.com/photo-1549719386-74dfcbf7dbed?w=800',
+      banner_url: 'https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?w=1600',
+      max_tickets_per_user: 6,
+      booking_start_at: '2025-11-01T10:00:00+07:00',
+      booking_end_at: '2026-01-08T23:59:59+07:00'
+    },
+    shows: [
+      { name: 'Championship Night', show_date: '2026-01-09', start_time: '18:00:00+07:00', end_time: '23:00:00+07:00' }
+    ],
+    zones: [
+      { name: 'Ringside', price: 5000, total_seats: 100, description: 'Ringside seats' },
+      { name: 'VIP', price: 3000, total_seats: 200, description: 'VIP seating' },
+      { name: 'Standard', price: 1500, total_seats: 500, description: 'Standard seating' }
+    ]
+  },
+  {
+    status: 'OPEN',
+    event: {
+      name: 'Royal Bangkok Symphony Orchestra',
+      description: 'An evening of classical masterpieces.',
+      short_description: 'Classical Night - Beethoven and Tchaikovsky',
+      venue_name: 'Thailand Cultural Centre',
+      venue_address: '14 Thiam Ruam Mit Rd',
+      city: 'Bangkok',
+      country: 'Thailand',
+      poster_url: 'https://images.unsplash.com/photo-1465847899084-d164df4dedc6?w=800',
+      banner_url: 'https://images.unsplash.com/photo-1507838153414-b4b713384a76?w=1600',
+      max_tickets_per_user: 4,
+      booking_start_at: '2025-11-01T10:00:00+07:00',
+      booking_end_at: '2025-12-29T23:59:59+07:00'
+    },
+    shows: [
+      { name: 'Evening Performance', show_date: '2025-12-30', start_time: '19:30:00+07:00', end_time: '22:00:00+07:00' }
+    ],
+    zones: [
+      { name: 'Orchestra', price: 2500, total_seats: 200, description: 'Best acoustic' },
+      { name: 'Mezzanine', price: 1800, total_seats: 300, description: 'Elevated view' },
+      { name: 'Balcony', price: 1200, total_seats: 400, description: 'Upper level' }
+    ]
+  },
+  {
+    status: 'OPEN',
+    event: {
+      name: 'Bangkok Street Food Festival',
+      description: 'Celebrate Thailand culinary heritage.',
+      short_description: 'Street Food Festival - Taste of Thailand',
+      venue_name: 'Central World Square',
+      venue_address: '999/9 Rama I Rd',
+      city: 'Bangkok',
+      country: 'Thailand',
+      poster_url: 'https://images.unsplash.com/photo-1555939594-58d7cb561ad1?w=800',
+      banner_url: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=1600',
+      max_tickets_per_user: 6,
+      booking_start_at: '2025-11-01T10:00:00+07:00',
+      booking_end_at: '2026-01-10T23:59:59+07:00'
+    },
+    shows: [
+      { name: 'Weekend Pass', show_date: '2026-01-11', start_time: '11:00:00+07:00', end_time: '22:00:00+07:00' }
+    ],
+    zones: [
+      { name: 'VIP All-You-Can-Eat', price: 1500, total_seats: 500, description: 'Unlimited food' },
+      { name: 'Premium Pass', price: 800, total_seats: 1000, description: '10 vouchers' },
+      { name: 'General Entry', price: 299, total_seats: 2000, description: 'Entry only' }
+    ]
+  },
   {
     status: 'OPEN',
     event: {
       name: 'Taylor Swift The Eras Tour',
-      description: 'Taylor Swift brings her record-breaking Eras Tour to Bangkok for an unforgettable night spanning her entire musical catalog.',
+      description: 'Taylor Swift brings her record-breaking Eras Tour to Bangkok.',
       short_description: 'Taylor Swift Eras Tour Bangkok 2026',
       venue_name: 'Rajamangala National Stadium',
       venue_address: '286 Ramkhamhaeng Rd',
@@ -136,7 +278,7 @@ const events = [
     status: 'OPEN',
     event: {
       name: 'UFC Fight Night Bangkok',
-      description: 'The Ultimate Fighting Championship returns to Bangkok with an action-packed fight card.',
+      description: 'UFC returns to Bangkok with an action-packed fight card.',
       short_description: 'UFC Fight Night - Thailand',
       venue_name: 'Impact Arena',
       venue_address: '99 Popular Rd, Pak Kret',
@@ -152,17 +294,17 @@ const events = [
       { name: 'Main Event', show_date: '2026-02-28', start_time: '17:00:00+07:00', end_time: '23:00:00+07:00' }
     ],
     zones: [
-      { name: 'Cageside', price: 25000, total_seats: 100, description: 'VIP cageside seats' },
+      { name: 'Cageside', price: 25000, total_seats: 100, description: 'VIP cageside' },
       { name: 'Floor', price: 12000, total_seats: 500, description: 'Floor seating' },
-      { name: 'Lower Tier', price: 6000, total_seats: 1500, description: 'Lower tier seating' },
-      { name: 'Upper Tier', price: 3000, total_seats: 3000, description: 'Upper tier seating' }
+      { name: 'Lower Tier', price: 6000, total_seats: 1500, description: 'Lower tier' },
+      { name: 'Upper Tier', price: 3000, total_seats: 3000, description: 'Upper tier' }
     ]
   },
   {
     status: 'OPEN',
     event: {
       name: 'Disney On Ice: Frozen Adventures',
-      description: 'Join Anna, Elsa, and friends in this magical ice skating spectacular.',
+      description: 'Join Anna, Elsa, and friends in this magical ice spectacular.',
       short_description: 'Disney On Ice presents Frozen',
       venue_name: 'Impact Arena',
       venue_address: '99 Popular Rd, Pak Kret',
@@ -180,16 +322,16 @@ const events = [
       { name: 'Sunday Matinee', show_date: '2026-01-26', start_time: '14:00:00+07:00', end_time: '17:00:00+07:00' }
     ],
     zones: [
-      { name: 'VIP', price: 4500, total_seats: 300, description: 'Best view with gift pack' },
-      { name: 'Premium', price: 3000, total_seats: 800, description: 'Great viewing angle' },
-      { name: 'Standard', price: 1800, total_seats: 1500, description: 'Standard seating' }
+      { name: 'VIP', price: 4500, total_seats: 300, description: 'Best view + gift' },
+      { name: 'Premium', price: 3000, total_seats: 800, description: 'Great view' },
+      { name: 'Standard', price: 1800, total_seats: 1500, description: 'Standard' }
     ]
   },
   {
     status: 'OPEN',
     event: {
       name: 'Bruno Mars 24K Magic World Tour',
-      description: 'Bruno Mars brings his electrifying 24K Magic World Tour to Bangkok.',
+      description: 'Bruno Mars brings his electrifying tour to Bangkok.',
       short_description: 'Bruno Mars Live in Bangkok',
       venue_name: 'Impact Arena',
       venue_address: '99 Popular Rd, Pak Kret',
@@ -205,20 +347,20 @@ const events = [
       { name: 'Bangkok Show', show_date: '2026-02-14', start_time: '20:00:00+07:00', end_time: '23:00:00+07:00' }
     ],
     zones: [
-      { name: 'Golden Circle', price: 12000, total_seats: 500, description: 'Standing closest to stage' },
-      { name: 'CAT 1', price: 8500, total_seats: 1000, description: 'Premium reserved' },
-      { name: 'CAT 2', price: 5500, total_seats: 2000, description: 'Standard reserved' },
-      { name: 'CAT 3', price: 3500, total_seats: 2500, description: 'Value seating' }
+      { name: 'Golden Circle', price: 12000, total_seats: 500, description: 'Standing front' },
+      { name: 'CAT 1', price: 8500, total_seats: 1000, description: 'Premium' },
+      { name: 'CAT 2', price: 5500, total_seats: 2000, description: 'Standard' },
+      { name: 'CAT 3', price: 3500, total_seats: 2500, description: 'Value' }
     ]
   },
   {
     status: 'OPEN',
     event: {
       name: 'Cirque du Soleil: Alegria',
-      description: 'Experience the wonder of Cirque du Soleil with their iconic show Alegria.',
+      description: 'Experience the wonder of Cirque du Soleil.',
       short_description: 'Cirque du Soleil Alegria Bangkok',
       venue_name: 'Royal Paragon Hall',
-      venue_address: 'Siam Paragon, Rama I Rd',
+      venue_address: 'Siam Paragon',
       city: 'Bangkok',
       country: 'Thailand',
       poster_url: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=800',
@@ -229,11 +371,11 @@ const events = [
     },
     shows: [
       { name: 'Opening Night', show_date: '2026-01-31', start_time: '20:00:00+07:00', end_time: '22:30:00+07:00' },
-      { name: 'Weekend Show 1', show_date: '2026-02-01', start_time: '20:00:00+07:00', end_time: '22:30:00+07:00' }
+      { name: 'Weekend Show', show_date: '2026-02-01', start_time: '20:00:00+07:00', end_time: '22:30:00+07:00' }
     ],
     zones: [
-      { name: 'Platinum', price: 8900, total_seats: 200, description: 'Best seats in house' },
-      { name: 'Gold', price: 6500, total_seats: 500, description: 'Premium viewing' },
+      { name: 'Platinum', price: 8900, total_seats: 200, description: 'Best seats' },
+      { name: 'Gold', price: 6500, total_seats: 500, description: 'Premium' },
       { name: 'Silver', price: 4500, total_seats: 800, description: 'Great value' }
     ]
   },
@@ -241,7 +383,7 @@ const events = [
     status: 'OPEN',
     event: {
       name: 'ONE Championship: Bangkok Battleground',
-      description: 'Asia premier martial arts organization brings world-class MMA action to Bangkok.',
+      description: 'Asia premier martial arts organization.',
       short_description: 'ONE Championship Bangkok',
       venue_name: 'Impact Arena',
       venue_address: '99 Popular Rd, Pak Kret',
@@ -257,17 +399,17 @@ const events = [
       { name: 'Fight Night', show_date: '2026-01-17', start_time: '18:00:00+07:00', end_time: '23:00:00+07:00' }
     ],
     zones: [
-      { name: 'Ringside VIP', price: 15000, total_seats: 100, description: 'Ringside VIP experience' },
-      { name: 'Ringside', price: 8000, total_seats: 300, description: 'Ringside seating' },
-      { name: 'Lower Bowl', price: 4000, total_seats: 1000, description: 'Lower bowl seating' },
-      { name: 'Upper Bowl', price: 1500, total_seats: 2000, description: 'Upper bowl seating' }
+      { name: 'Ringside VIP', price: 15000, total_seats: 100, description: 'Ringside VIP' },
+      { name: 'Ringside', price: 8000, total_seats: 300, description: 'Ringside' },
+      { name: 'Lower Bowl', price: 4000, total_seats: 1000, description: 'Lower bowl' },
+      { name: 'Upper Bowl', price: 1500, total_seats: 2000, description: 'Upper bowl' }
     ]
   },
   {
     status: 'OPEN',
     event: {
       name: 'Wine and Dine Festival Bangkok',
-      description: 'Premium wine tasting event featuring over 200 wines from around the world with gourmet food pairings.',
+      description: 'Premium wine tasting with 200+ wines.',
       short_description: 'Wine and Dine Festival 2026',
       venue_name: 'Centara Grand',
       venue_address: '999/99 Rama I Rd',
@@ -293,7 +435,7 @@ const events = [
     status: 'OPEN',
     event: {
       name: 'Marvel Universe Live!',
-      description: 'Watch your favorite Marvel superheroes battle villains in this action-packed live arena show.',
+      description: 'Marvel superheroes battle villains in this live arena show.',
       short_description: 'Marvel Universe Live Bangkok',
       venue_name: 'Impact Arena',
       venue_address: '99 Popular Rd, Pak Kret',
@@ -310,16 +452,16 @@ const events = [
       { name: 'Sunday Show', show_date: '2026-02-22', start_time: '15:00:00+07:00', end_time: '18:00:00+07:00' }
     ],
     zones: [
-      { name: 'VIP Floor', price: 5500, total_seats: 400, description: 'Floor seating with gift' },
-      { name: 'Premium', price: 3500, total_seats: 1000, description: 'Premium seating' },
-      { name: 'Standard', price: 2000, total_seats: 2000, description: 'Standard seating' }
+      { name: 'VIP Floor', price: 5500, total_seats: 400, description: 'Floor + gift' },
+      { name: 'Premium', price: 3500, total_seats: 1000, description: 'Premium' },
+      { name: 'Standard', price: 2000, total_seats: 2000, description: 'Standard' }
     ]
   },
   {
     status: 'OPEN',
     event: {
       name: 'Bangkok Art Biennale Gala',
-      description: 'Exclusive gala evening celebrating contemporary art with live performances and exhibitions.',
+      description: 'Exclusive gala celebrating contemporary art.',
       short_description: 'BAB Gala Night 2026',
       venue_name: 'Bangkok Art and Culture Centre',
       venue_address: '939 Rama I Rd',
@@ -336,7 +478,7 @@ const events = [
     ],
     zones: [
       { name: 'Patron', price: 25000, total_seats: 50, description: 'VIP dinner + art piece' },
-      { name: 'Benefactor', price: 12000, total_seats: 150, description: 'Gala dinner + cocktails' },
+      { name: 'Benefactor', price: 12000, total_seats: 150, description: 'Gala dinner' },
       { name: 'Supporter', price: 5000, total_seats: 300, description: 'Cocktails + exhibition' }
     ]
   },
@@ -344,7 +486,7 @@ const events = [
     status: 'OPEN',
     event: {
       name: 'Yoga & Wellness Retreat',
-      description: 'A day of mindfulness, yoga sessions, and wellness workshops with renowned instructors.',
+      description: 'A day of mindfulness, yoga, and wellness workshops.',
       short_description: 'Bangkok Wellness Retreat 2026',
       venue_name: 'Centara Grand Beach Resort',
       venue_address: 'Hua Hin',
@@ -366,12 +508,93 @@ const events = [
     ]
   },
 
-  // === UPCOMING Events (5) ===
+  // ============================================================================
+  // UPCOMING EVENTS (8)
+  // ============================================================================
+  {
+    status: 'UPCOMING',
+    event: {
+      name: 'Ed Sheeran Mathematics Tour',
+      description: 'Grammy Award winner Ed Sheeran brings his tour to Bangkok.',
+      short_description: 'Ed Sheeran Live - Mathematics Tour',
+      venue_name: 'Impact Arena',
+      venue_address: '99 Popular Rd, Pak Kret',
+      city: 'Nonthaburi',
+      country: 'Thailand',
+      poster_url: 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=800',
+      banner_url: 'https://images.unsplash.com/photo-1501386761578-eac5c94b800a?w=1600',
+      max_tickets_per_user: 4,
+      booking_start_at: '2025-12-20T10:00:00+07:00',
+      booking_end_at: '2026-01-28T23:59:59+07:00'
+    },
+    shows: [
+      { name: 'Bangkok Show', show_date: '2026-01-29', start_time: '20:00:00+07:00', end_time: '23:00:00+07:00' }
+    ],
+    zones: [
+      { name: 'CAT 1', price: 8900, total_seats: 800, description: 'Best seats' },
+      { name: 'CAT 2', price: 6500, total_seats: 1500, description: 'Premium' },
+      { name: 'CAT 3', price: 4500, total_seats: 2000, description: 'Great value' },
+      { name: 'CAT 4', price: 2500, total_seats: 2500, description: 'Budget' }
+    ]
+  },
+  {
+    status: 'UPCOMING',
+    event: {
+      name: 'Bangkok International Jazz Festival',
+      description: 'Three days of world-class jazz.',
+      short_description: 'Bangkok Jazz Festival 2026',
+      venue_name: 'Lumpini Park',
+      venue_address: 'Rama IV Road',
+      city: 'Bangkok',
+      country: 'Thailand',
+      poster_url: 'https://images.unsplash.com/photo-1415201364774-f6f0bb35f28f?w=800',
+      banner_url: 'https://images.unsplash.com/photo-1511192336575-5a79af67a629?w=1600',
+      max_tickets_per_user: 4,
+      booking_start_at: '2025-12-25T10:00:00+07:00',
+      booking_end_at: '2026-01-18T23:59:59+07:00'
+    },
+    shows: [
+      { name: 'Day 1 - Opening Night', show_date: '2026-01-19', start_time: '17:00:00+07:00', end_time: '23:00:00+07:00' },
+      { name: 'Day 2 - Main Event', show_date: '2026-01-20', start_time: '17:00:00+07:00', end_time: '23:00:00+07:00' }
+    ],
+    zones: [
+      { name: 'VIP Table', price: 3500, total_seats: 50, description: 'Reserved table' },
+      { name: 'Premium GA', price: 1800, total_seats: 500, description: 'Premium area' },
+      { name: 'General Admission', price: 900, total_seats: 1000, description: 'Standard' }
+    ]
+  },
+  {
+    status: 'UPCOMING',
+    event: {
+      name: 'TechCrunch Bangkok 2026',
+      description: 'Southeast Asia premier technology conference.',
+      short_description: 'TechCrunch Conference - Innovation Summit',
+      venue_name: 'Queen Sirikit National Convention Center',
+      venue_address: '60 New Rachadapisek Rd',
+      city: 'Bangkok',
+      country: 'Thailand',
+      poster_url: 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=800',
+      banner_url: 'https://images.unsplash.com/photo-1505373877841-8d25f7d46678?w=1600',
+      max_tickets_per_user: 2,
+      booking_start_at: '2026-01-01T10:00:00+07:00',
+      booking_end_at: '2026-02-17T23:59:59+07:00'
+    },
+    shows: [
+      { name: 'Day 1 - Keynotes', show_date: '2026-02-18', start_time: '09:00:00+07:00', end_time: '18:00:00+07:00' },
+      { name: 'Day 2 - Workshops', show_date: '2026-02-19', start_time: '09:00:00+07:00', end_time: '18:00:00+07:00' }
+    ],
+    zones: [
+      { name: 'VIP All-Access', price: 15000, total_seats: 100, description: 'All sessions + dinner' },
+      { name: 'Conference Pass', price: 8500, total_seats: 500, description: 'All sessions' },
+      { name: 'Startup Pass', price: 3500, total_seats: 300, description: 'Startup discount' },
+      { name: 'Student Pass', price: 1500, total_seats: 200, description: 'Student discount' }
+    ]
+  },
   {
     status: 'UPCOMING',
     event: {
       name: 'Blackpink World Tour: Born Pink',
-      description: 'K-pop queens Blackpink bring their Born Pink World Tour to Bangkok.',
+      description: 'K-pop queens Blackpink bring their tour to Bangkok.',
       short_description: 'Blackpink Born Pink Tour Bangkok',
       venue_name: 'Rajamangala National Stadium',
       venue_address: '286 Ramkhamhaeng Rd',
@@ -390,18 +613,18 @@ const events = [
     zones: [
       { name: 'Blink Zone', price: 15000, total_seats: 500, description: 'Closest to stage' },
       { name: 'Pink Zone', price: 9500, total_seats: 1500, description: 'Premium standing' },
-      { name: 'Seated A', price: 6500, total_seats: 3000, description: 'Lower bowl seats' },
-      { name: 'Seated B', price: 4000, total_seats: 4000, description: 'Upper bowl seats' }
+      { name: 'Seated A', price: 6500, total_seats: 3000, description: 'Lower bowl' },
+      { name: 'Seated B', price: 4000, total_seats: 4000, description: 'Upper bowl' }
     ]
   },
   {
     status: 'UPCOMING',
     event: {
       name: 'Formula E Bangkok E-Prix',
-      description: 'Electric racing comes to Bangkok streets with the Formula E championship.',
+      description: 'Electric racing comes to Bangkok streets.',
       short_description: 'Formula E Bangkok E-Prix 2026',
       venue_name: 'Bangkok Street Circuit',
-      venue_address: 'Royal Thai Navy Convention Hall Area',
+      venue_address: 'Royal Thai Navy Area',
       city: 'Bangkok',
       country: 'Thailand',
       poster_url: 'https://images.unsplash.com/photo-1568605117036-5fe5e7bab0b7?w=800',
@@ -414,7 +637,7 @@ const events = [
       { name: 'Race Day', show_date: '2026-05-15', start_time: '10:00:00+07:00', end_time: '18:00:00+07:00' }
     ],
     zones: [
-      { name: 'Paddock Club', price: 35000, total_seats: 100, description: 'Paddock access + hospitality' },
+      { name: 'Paddock Club', price: 35000, total_seats: 100, description: 'Paddock access' },
       { name: 'Grandstand A', price: 8500, total_seats: 500, description: 'Prime grandstand' },
       { name: 'Grandstand B', price: 5000, total_seats: 1000, description: 'Secondary grandstand' },
       { name: 'General Admission', price: 2000, total_seats: 5000, description: 'Roaming access' }
@@ -424,7 +647,7 @@ const events = [
     status: 'UPCOMING',
     event: {
       name: 'Anime Festival Asia Bangkok',
-      description: 'Southeast Asia largest anime convention featuring cosplay, merchandise, and guest appearances.',
+      description: 'Southeast Asia largest anime convention.',
       short_description: 'AFA Bangkok 2026',
       venue_name: 'BITEC Bangna',
       venue_address: '88 Bangna-Trad Road',
@@ -441,16 +664,16 @@ const events = [
       { name: 'Day 2', show_date: '2026-03-21', start_time: '10:00:00+07:00', end_time: '21:00:00+07:00' }
     ],
     zones: [
-      { name: 'VIP Pass', price: 3500, total_seats: 500, description: '2-day + exclusive merch' },
-      { name: 'Day Pass', price: 1200, total_seats: 3000, description: 'Single day access' },
-      { name: 'Concert Only', price: 2500, total_seats: 1000, description: 'Evening concert only' }
+      { name: 'VIP Pass', price: 3500, total_seats: 500, description: '2-day + merch' },
+      { name: 'Day Pass', price: 1200, total_seats: 3000, description: 'Single day' },
+      { name: 'Concert Only', price: 2500, total_seats: 1000, description: 'Evening concert' }
     ]
   },
   {
     status: 'UPCOMING',
     event: {
       name: 'World Barista Championship',
-      description: 'The world best baristas compete for the championship title in Bangkok.',
+      description: 'The world best baristas compete in Bangkok.',
       short_description: 'WBC Bangkok 2026',
       venue_name: 'Queen Sirikit National Convention Center',
       venue_address: '60 New Rachadapisek Rd',
@@ -466,8 +689,8 @@ const events = [
       { name: 'Finals Day', show_date: '2026-04-25', start_time: '09:00:00+07:00', end_time: '18:00:00+07:00' }
     ],
     zones: [
-      { name: 'VIP Tasting', price: 4500, total_seats: 100, description: 'Tasting sessions + finals' },
-      { name: 'Full Access', price: 2500, total_seats: 500, description: 'All competitions access' },
+      { name: 'VIP Tasting', price: 4500, total_seats: 100, description: 'Tastings + finals' },
+      { name: 'Full Access', price: 2500, total_seats: 500, description: 'All competitions' },
       { name: 'Finals Only', price: 1200, total_seats: 800, description: 'Finals viewing' }
     ]
   },
@@ -475,7 +698,7 @@ const events = [
     status: 'UPCOMING',
     event: {
       name: 'Dua Lipa Future Nostalgia Tour',
-      description: 'Pop superstar Dua Lipa brings her electrifying Future Nostalgia Tour to Bangkok.',
+      description: 'Pop superstar Dua Lipa brings her tour to Bangkok.',
       short_description: 'Dua Lipa Live in Bangkok',
       venue_name: 'Impact Arena',
       venue_address: '99 Popular Rd, Pak Kret',
@@ -491,19 +714,70 @@ const events = [
       { name: 'Bangkok Show', show_date: '2026-05-02', start_time: '20:00:00+07:00', end_time: '23:00:00+07:00' }
     ],
     zones: [
-      { name: 'VIP Standing', price: 9500, total_seats: 800, description: 'Front of stage standing' },
-      { name: 'CAT 1', price: 7000, total_seats: 1500, description: 'Premium seating' },
-      { name: 'CAT 2', price: 5000, total_seats: 2000, description: 'Standard seating' },
-      { name: 'CAT 3', price: 3000, total_seats: 2500, description: 'Value seating' }
+      { name: 'VIP Standing', price: 9500, total_seats: 800, description: 'Front standing' },
+      { name: 'CAT 1', price: 7000, total_seats: 1500, description: 'Premium' },
+      { name: 'CAT 2', price: 5000, total_seats: 2000, description: 'Standard' },
+      { name: 'CAT 3', price: 3000, total_seats: 2500, description: 'Value' }
     ]
   },
 
-  // === ENDED Events (5) ===
+  // ============================================================================
+  // ENDED EVENTS (7)
+  // ============================================================================
+  {
+    status: 'ENDED',
+    event: {
+      name: 'Summer Sonic Bangkok',
+      description: 'Thailand premier summer music festival.',
+      short_description: 'Summer Sonic Festival 2025',
+      venue_name: 'BITEC Bangna',
+      venue_address: '88 Bangna-Trad Road',
+      city: 'Bangkok',
+      country: 'Thailand',
+      poster_url: 'https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?w=800',
+      banner_url: 'https://images.unsplash.com/photo-1506157786151-b8491531f063?w=1600',
+      max_tickets_per_user: 4,
+      booking_start_at: '2025-10-01T10:00:00+07:00',
+      booking_end_at: '2025-11-14T23:59:59+07:00'
+    },
+    shows: [
+      { name: 'Festival Day', show_date: '2025-11-15', start_time: '12:00:00+07:00', end_time: '23:00:00+07:00' }
+    ],
+    zones: [
+      { name: 'VIP', price: 5500, total_seats: 500, description: 'VIP area' },
+      { name: 'General Admission', price: 2500, total_seats: 5000, description: 'Full access' }
+    ]
+  },
+  {
+    status: 'ENDED',
+    event: {
+      name: 'Stand-up Comedy Night: Thai Edition',
+      description: 'A night of laughter featuring Thailand top comedians.',
+      short_description: 'Comedy Night Bangkok',
+      venue_name: 'Scala Theater',
+      venue_address: 'Siam Square Soi 1',
+      city: 'Bangkok',
+      country: 'Thailand',
+      poster_url: 'https://images.unsplash.com/photo-1585699324551-f6c309eedeca?w=800',
+      banner_url: 'https://images.unsplash.com/photo-1527224538127-2104bb71c51b?w=1600',
+      max_tickets_per_user: 4,
+      booking_start_at: '2025-11-01T10:00:00+07:00',
+      booking_end_at: '2025-11-27T23:59:59+07:00'
+    },
+    shows: [
+      { name: 'Evening Show', show_date: '2025-11-28', start_time: '20:00:00+07:00', end_time: '22:30:00+07:00' }
+    ],
+    zones: [
+      { name: 'VIP', price: 1500, total_seats: 100, description: 'Front row + meet and greet' },
+      { name: 'Standard', price: 800, total_seats: 300, description: 'Standard' },
+      { name: 'Economy', price: 500, total_seats: 200, description: 'Back section' }
+    ]
+  },
   {
     status: 'ENDED',
     event: {
       name: 'Harry Styles Love On Tour',
-      description: 'Harry Styles brought his Love On Tour to Bangkok for two magical nights.',
+      description: 'Harry Styles brought his tour to Bangkok.',
       short_description: 'Harry Styles Bangkok 2025',
       venue_name: 'Impact Arena',
       venue_address: '99 Popular Rd, Pak Kret',
@@ -519,16 +793,16 @@ const events = [
       { name: 'Night 1', show_date: '2025-10-20', start_time: '20:00:00+07:00', end_time: '23:00:00+07:00' }
     ],
     zones: [
-      { name: 'Golden Circle', price: 9500, total_seats: 500, description: 'Standing front stage' },
-      { name: 'CAT 1', price: 6500, total_seats: 1500, description: 'Premium seating' },
-      { name: 'CAT 2', price: 4000, total_seats: 2500, description: 'Standard seating' }
+      { name: 'Golden Circle', price: 9500, total_seats: 500, description: 'Standing front' },
+      { name: 'CAT 1', price: 6500, total_seats: 1500, description: 'Premium' },
+      { name: 'CAT 2', price: 4000, total_seats: 2500, description: 'Standard' }
     ]
   },
   {
     status: 'ENDED',
     event: {
       name: 'World Travel Fair Bangkok',
-      description: 'Annual travel exhibition featuring deals from airlines, hotels, and tour operators.',
+      description: 'Annual travel exhibition with amazing deals.',
       short_description: 'Travel Fair Bangkok 2025',
       venue_name: 'BITEC Bangna',
       venue_address: '88 Bangna-Trad Road',
@@ -552,7 +826,7 @@ const events = [
     status: 'ENDED',
     event: {
       name: 'Bangkok Marathon 2025',
-      description: 'Annual Bangkok Marathon with full marathon, half marathon, and fun run categories.',
+      description: 'Annual Bangkok Marathon with multiple categories.',
       short_description: 'Bangkok Marathon 2025',
       venue_name: 'Sanam Chai Road',
       venue_address: 'Grand Palace Area',
@@ -568,16 +842,16 @@ const events = [
       { name: 'Race Day', show_date: '2025-11-16', start_time: '04:00:00+07:00', end_time: '12:00:00+07:00' }
     ],
     zones: [
-      { name: 'Full Marathon', price: 1800, total_seats: 5000, description: '42.195km race' },
-      { name: 'Half Marathon', price: 1500, total_seats: 8000, description: '21.1km race' },
-      { name: 'Fun Run 10K', price: 800, total_seats: 10000, description: '10km fun run' }
+      { name: 'Full Marathon', price: 1800, total_seats: 5000, description: '42.195km' },
+      { name: 'Half Marathon', price: 1500, total_seats: 8000, description: '21.1km' },
+      { name: 'Fun Run 10K', price: 800, total_seats: 10000, description: '10km' }
     ]
   },
   {
     status: 'ENDED',
     event: {
       name: 'Thailand Game Show 2025',
-      description: 'Southeast Asia biggest gaming expo featuring new game releases, esports, and cosplay.',
+      description: 'Southeast Asia biggest gaming expo.',
       short_description: 'TGS 2025',
       venue_name: 'Queen Sirikit National Convention Center',
       venue_address: '60 New Rachadapisek Rd',
@@ -594,15 +868,15 @@ const events = [
       { name: 'Day 2', show_date: '2025-10-26', start_time: '10:00:00+07:00', end_time: '21:00:00+07:00' }
     ],
     zones: [
-      { name: 'VIP Pass', price: 2500, total_seats: 500, description: '2-day + exclusive booth' },
-      { name: 'Day Pass', price: 450, total_seats: 10000, description: 'Single day access' }
+      { name: 'VIP Pass', price: 2500, total_seats: 500, description: '2-day + exclusive' },
+      { name: 'Day Pass', price: 450, total_seats: 10000, description: 'Single day' }
     ]
   },
   {
     status: 'ENDED',
     event: {
       name: 'Oktoberfest Bangkok 2025',
-      description: 'German beer festival celebration with authentic Bavarian food, music, and entertainment.',
+      description: 'German beer festival celebration.',
       short_description: 'Oktoberfest Bangkok 2025',
       venue_name: 'Watergate Pavillion',
       venue_address: 'Ratchaprarop Rd',
@@ -619,30 +893,41 @@ const events = [
     ],
     zones: [
       { name: 'VIP Table', price: 5000, total_seats: 100, description: 'Reserved table + beers' },
-      { name: 'Premium', price: 1500, total_seats: 500, description: 'Premium area + 2 beers' },
+      { name: 'Premium', price: 1500, total_seats: 500, description: 'Premium + 2 beers' },
       { name: 'General', price: 500, total_seats: 2000, description: 'General admission' }
     ]
   }
 ];
 
+// ============================================================================
+// MAIN
+// ============================================================================
+
 async function main() {
-  console.log('=== Extra Events Seed Script (20 Events) ===');
-  console.log(`API URL: ${API_BASE_URL}`);
-  console.log(`User: ${ADMIN_EMAIL}`);
+  console.log('');
+  log('cyan', '='.repeat(60));
+  log('cyan', '  Booking Rush - Seed Events Script (30 Events)');
+  log('cyan', '='.repeat(60));
+  console.log('');
+  log('blue', `API URL: ${API_BASE_URL}`);
+  log('blue', `User: ${ADMIN_EMAIL}`);
   console.log('');
 
   await login();
   console.log('');
-  console.log('=== Creating 20 Events ===');
+  log('yellow', '[Step 2] Creating events...');
   console.log('');
 
   let created = 0;
+  const total = events.length;
 
   for (let i = 0; i < events.length; i++) {
     const { status, event, shows, zones } = events[i];
     const statusColor = status === 'OPEN' ? 'green' : status === 'UPCOMING' ? 'blue' : 'red';
+    const shortName = event.name.length > 35 ? event.name.substring(0, 35) + '...' : event.name;
 
-    log(statusColor, `[${i + 1}/20] ${status} - ${event.name}`);
+    process.stdout.write(`  [${String(i + 1).padStart(2)}/${total}] `);
+    log(statusColor, `${status.padEnd(8)} ${shortName}`);
 
     const eventId = await createEvent(event);
     if (!eventId) continue;
@@ -658,18 +943,19 @@ async function main() {
 
     await publishEvent(eventId);
     created++;
-    console.log('');
   }
 
-  console.log('=== Seed Complete ===');
+  // Summary
   console.log('');
-  log('green', `Successfully created ${created} events!`);
+  log('cyan', '='.repeat(60));
+  log('green', `  Created ${created}/${total} events successfully!`);
+  log('cyan', '='.repeat(60));
   console.log('');
-  console.log('Summary:');
-  log('green', '  OPEN (10): Taylor Swift, UFC, Disney On Ice, Bruno Mars, Cirque du Soleil,');
-  log('green', '             ONE Championship, Wine Festival, Marvel Live, Art Gala, Yoga Retreat');
-  log('blue', '  UPCOMING (5): Blackpink, Formula E, Anime Festival, Barista Championship, Dua Lipa');
-  log('red', '  ENDED (5): Harry Styles, Travel Fair, Marathon, Game Show, Oktoberfest');
+  log('blue', 'Summary:');
+  log('green', '  OPEN (15):     BTS, Coldplay, Taylor Swift, Bruno Mars, etc.');
+  log('blue', '  UPCOMING (8):  Ed Sheeran, Blackpink, Dua Lipa, Formula E, etc.');
+  log('red', '  ENDED (7):     Summer Sonic, Harry Styles, Oktoberfest, etc.');
+  console.log('');
 }
 
 main().catch(err => {

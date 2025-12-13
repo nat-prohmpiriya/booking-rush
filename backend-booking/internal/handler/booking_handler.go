@@ -243,6 +243,12 @@ func (h *BookingHandler) handleError(c *gin.Context, err error) {
 			Error: err.Error(),
 			Code:  "NOT_FOUND",
 		})
+	case errors.Is(err, domain.ErrZoneNotFound):
+		c.JSON(http.StatusNotFound, dto.ErrorResponse{
+			Error:   err.Error(),
+			Code:    "ZONE_NOT_FOUND",
+			Message: "Zone inventory not synced to Redis. Please sync inventory first.",
+		})
 	case errors.Is(err, domain.ErrInvalidUserID):
 		c.JSON(http.StatusForbidden, dto.ErrorResponse{
 			Error: err.Error(),
