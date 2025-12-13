@@ -3,14 +3,12 @@ package service
 import (
 	"context"
 	"errors"
-	"fmt"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/prohmpiriya/booking-rush-10k-rps/backend-ticket/internal/domain"
 	"github.com/prohmpiriya/booking-rush-10k-rps/backend-ticket/internal/dto"
 	"github.com/prohmpiriya/booking-rush-10k-rps/backend-ticket/internal/repository"
-	"github.com/prohmpiriya/booking-rush-10k-rps/pkg/redis"
 )
 
 // ShowZoneService errors
@@ -22,15 +20,15 @@ var (
 type showZoneService struct {
 	showZoneRepo repository.ShowZoneRepository
 	showRepo     repository.ShowRepository
-	redis        *redis.Client
+	zoneSyncer   ZoneSyncer
 }
 
 // NewShowZoneService creates a new ShowZoneService
-func NewShowZoneService(showZoneRepo repository.ShowZoneRepository, showRepo repository.ShowRepository, redisClient *redis.Client) ShowZoneService {
+func NewShowZoneService(showZoneRepo repository.ShowZoneRepository, showRepo repository.ShowRepository, zoneSyncer ZoneSyncer) ShowZoneService {
 	return &showZoneService{
 		showZoneRepo: showZoneRepo,
 		showRepo:     showRepo,
-		redis:        redisClient,
+		zoneSyncer:   zoneSyncer,
 	}
 }
 
@@ -70,8 +68,10 @@ func (s *showZoneService) CreateShowZone(ctx context.Context, req *dto.CreateSho
 		return nil, err
 	}
 
-	// Auto sync to Redis for booking service
-	s.syncZoneToRedis(ctx, zone)
+	// Only sync to Redis if show is on_sale
+	if show.Status == domain.ShowStatusOnSale && zone.IsActive {
+		_ = s.zoneSyncer.SyncZone(ctx, zone)
+	}
 
 	return zone, nil
 }
@@ -150,8 +150,16 @@ func (s *showZoneService) UpdateShowZone(ctx context.Context, id string, req *dt
 		return nil, err
 	}
 
-	// Auto sync to Redis for booking service
-	s.syncZoneToRedis(ctx, zone)
+	// Only sync to Redis if show is on_sale
+	show, err := s.showRepo.GetByID(ctx, zone.ShowID)
+	if err == nil && show != nil && show.Status == domain.ShowStatusOnSale {
+		if zone.IsActive {
+			_ = s.zoneSyncer.SyncZone(ctx, zone)
+		} else {
+			// Remove from Redis if zone is deactivated
+			_ = s.zoneSyncer.RemoveZone(ctx, zone.ID)
+		}
+	}
 
 	return zone, nil
 }
@@ -173,21 +181,4 @@ func (s *showZoneService) DeleteShowZone(ctx context.Context, id string) error {
 // ListActiveZones lists all active zones for inventory sync
 func (s *showZoneService) ListActiveZones(ctx context.Context) ([]*domain.ShowZone, error) {
 	return s.showZoneRepo.ListActive(ctx)
-}
-
-// syncZoneToRedis syncs zone availability to Redis for booking service
-func (s *showZoneService) syncZoneToRedis(ctx context.Context, zone *domain.ShowZone) {
-	if s.redis == nil {
-		return
-	}
-
-	key := fmt.Sprintf("zone:availability:%s", zone.ID)
-
-	if zone.IsActive {
-		// Set availability in Redis (no expiration)
-		_ = s.redis.Set(ctx, key, zone.AvailableSeats, 0).Err()
-	} else {
-		// Remove from Redis if zone is deactivated
-		_ = s.redis.Del(ctx, key).Err()
-	}
 }

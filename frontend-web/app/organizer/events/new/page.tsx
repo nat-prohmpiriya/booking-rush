@@ -6,9 +6,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { ArrowLeft, Plus, Trash2, Calendar } from "lucide-react"
+import { ArrowLeft, Plus, Trash2, Calendar, Clock } from "lucide-react"
 import Link from "next/link"
 import { apiClient } from "@/lib/api/client"
+import { DatePicker } from "@/components/ui/date-picker"
+import { format } from "date-fns"
 
 interface ShowInput {
   name: string
@@ -180,11 +182,8 @@ export default function CreateEventPage() {
         }
       }
 
-      // Publish the event
-      await apiClient.post(`/events/${eventId}/publish`)
-
-      // Redirect to events list
-      router.push("/organizer/events")
+      // Redirect to edit page for review before publishing
+      router.push(`/organizer/events/${eventId}`)
     } catch (err) {
       console.error("Failed to create event:", err)
       setError(err instanceof Error ? err.message : "Failed to create event")
@@ -263,7 +262,7 @@ export default function CreateEventPage() {
                 value={eventData.description}
                 onChange={(e) => handleEventChange("description", e.target.value)}
                 placeholder="Detailed description of your event"
-                className="w-full min-h-[100px] px-3 py-2 border rounded-md bg-background"
+                className="w-full min-h-[100px] px-3 py-2 border border-input rounded-md bg-input"
               />
             </div>
 
@@ -377,11 +376,10 @@ export default function CreateEventPage() {
                   </div>
                   <div className="space-y-2">
                     <Label>Date *</Label>
-                    <Input
-                      type="date"
-                      value={show.show_date}
-                      onChange={(e) => handleShowChange(showIndex, "show_date", e.target.value)}
-                      required
+                    <DatePicker
+                      date={show.show_date ? new Date(show.show_date) : undefined}
+                      onDateChange={(date) => handleShowChange(showIndex, "show_date", date ? format(date, "yyyy-MM-dd") : "")}
+                      placeholder="Select date"
                     />
                   </div>
                   <div className="space-y-2">

@@ -22,6 +22,16 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import { eventsApi } from "@/lib/api"
 import type { EventResponse } from "@/lib/api/types"
 
@@ -29,6 +39,8 @@ export default function OrganizerEventsPage() {
   const [events, setEvents] = useState<EventResponse[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState("")
+  const [deleteEventId, setDeleteEventId] = useState<string | null>(null)
+  const [isDeleting, setIsDeleting] = useState(false)
 
   useEffect(() => {
     loadEvents()
@@ -37,12 +49,27 @@ export default function OrganizerEventsPage() {
   const loadEvents = async () => {
     try {
       setIsLoading(true)
-      const response = await eventsApi.list({ limit: 100 })
+      const response = await eventsApi.listMyEvents({ limit: 100 })
       setEvents(response.data || [])
     } catch (error) {
       console.error("Failed to load events:", error)
     } finally {
       setIsLoading(false)
+    }
+  }
+
+  const handleDelete = async () => {
+    if (!deleteEventId) return
+    try {
+      setIsDeleting(true)
+      await eventsApi.delete(deleteEventId)
+      setEvents(events.filter(e => e.id !== deleteEventId))
+      setDeleteEventId(null)
+    } catch (error) {
+      console.error("Failed to delete event:", error)
+      alert("Failed to delete event")
+    } finally {
+      setIsDeleting(false)
     }
   }
 
@@ -192,7 +219,10 @@ export default function OrganizerEventsPage() {
                           View Public Page
                         </Link>
                       </DropdownMenuItem>
-                      <DropdownMenuItem className="text-destructive">
+                      <DropdownMenuItem
+                        className="text-destructive"
+                        onClick={() => setDeleteEventId(event.id)}
+                      >
                         <Trash2 className="h-4 w-4 mr-2" />
                         Delete
                       </DropdownMenuItem>
@@ -209,6 +239,28 @@ export default function OrganizerEventsPage() {
           ))}
         </div>
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={!!deleteEventId} onOpenChange={(open) => !open && setDeleteEventId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Event</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this event? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              disabled={isDeleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isDeleting ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

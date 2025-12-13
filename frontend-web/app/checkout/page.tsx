@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, Suspense } from "react"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
@@ -26,7 +26,27 @@ interface QueueData {
   queuePassExpiresAt: string
 }
 
+// Wrapper component to handle Suspense for useSearchParams
 export default function CheckoutPage() {
+  return (
+    <Suspense fallback={<CheckoutLoadingFallback />}>
+      <CheckoutContent />
+    </Suspense>
+  )
+}
+
+function CheckoutLoadingFallback() {
+  return (
+    <div className="min-h-screen bg-black-gradient pattern-dots flex items-center justify-center">
+      <div className="text-center">
+        <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+        <p className="text-muted-foreground">Loading checkout...</p>
+      </div>
+    </div>
+  )
+}
+
+function CheckoutContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const bookingIdParam = searchParams.get("booking_id")
@@ -487,9 +507,9 @@ export default function CheckoutPage() {
             <div className="p-8 md:p-10">
               {/* Icon */}
               <div className="relative mx-auto mb-6 w-20 h-20">
-                <div className="absolute inset-0 bg-red-500/20 rounded-full blur-xl animate-pulse" />
-                <div className="relative w-20 h-20 rounded-full bg-gradient-to-br from-red-900/50 to-red-950/50 border border-red-500/30 flex items-center justify-center">
-                  <AlertTriangle className="w-9 h-9 text-red-400" />
+                <div className="absolute inset-0 bg-red-500/30 rounded-full blur-xl animate-pulse" />
+                <div className="relative w-20 h-20 rounded-full bg-gradient-to-br from-red-700 to-red-800 border border-red-400/50 flex items-center justify-center">
+                  <AlertTriangle className="w-9 h-9 text-white" />
                 </div>
               </div>
 

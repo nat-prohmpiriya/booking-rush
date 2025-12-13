@@ -23,6 +23,7 @@ export interface UpdateEventRequest {
   max_tickets_per_user?: number
   booking_start_at?: string
   booking_end_at?: string
+  status?: string // draft, published, cancelled, completed
   is_featured?: boolean
   is_public?: boolean
 }
@@ -55,6 +56,7 @@ export interface UpdateZoneRequest {
 }
 
 export const eventsApi = {
+  // List published events (public)
   async list(filter?: EventListFilter): Promise<EventListResponse> {
     const params = new URLSearchParams()
     if (filter?.status) params.append("status", filter.status)
@@ -65,6 +67,19 @@ export const eventsApi = {
 
     const queryString = params.toString()
     const endpoint = queryString ? `/events?${queryString}` : "/events"
+    return apiClient.get<EventListResponse>(endpoint)
+  },
+
+  // List events owned by current user (organizer)
+  async listMyEvents(filter?: EventListFilter): Promise<EventListResponse> {
+    const params = new URLSearchParams()
+    if (filter?.status) params.append("status", filter.status)
+    if (filter?.search) params.append("search", filter.search)
+    if (filter?.limit) params.append("limit", filter.limit.toString())
+    if (filter?.offset) params.append("offset", filter.offset.toString())
+
+    const queryString = params.toString()
+    const endpoint = queryString ? `/events/my?${queryString}` : "/events/my"
     return apiClient.get<EventListResponse>(endpoint)
   },
 

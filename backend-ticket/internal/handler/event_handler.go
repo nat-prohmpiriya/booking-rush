@@ -56,6 +56,7 @@ func (h *EventHandler) List(c *gin.Context) {
 }
 
 // GetBySlug handles GET /events/:slug - retrieves an event by slug
+// For non-published events, only the owner can view
 func (h *EventHandler) GetBySlug(c *gin.Context) {
 	slug := c.Param("slug")
 	if slug == "" {
@@ -73,10 +74,20 @@ func (h *EventHandler) GetBySlug(c *gin.Context) {
 		return
 	}
 
+	// If event is not published, only owner can view
+	if event.Status != domain.EventStatusPublished {
+		userID, _ := middleware.GetUserID(c)
+		if userID != event.OrganizerID {
+			c.JSON(http.StatusNotFound, response.NotFound("Event not found"))
+			return
+		}
+	}
+
 	c.JSON(http.StatusOK, response.Success(toEventResponse(event)))
 }
 
 // GetByID handles GET /events/id/:id - retrieves an event by ID
+// For non-published events, only the owner can view
 func (h *EventHandler) GetByID(c *gin.Context) {
 	id := c.Param("id")
 	if id == "" {
@@ -94,7 +105,61 @@ func (h *EventHandler) GetByID(c *gin.Context) {
 		return
 	}
 
+	// If event is not published, only owner can view
+	if event.Status != domain.EventStatusPublished {
+		userID, _ := middleware.GetUserID(c)
+		if userID != event.OrganizerID {
+			c.JSON(http.StatusNotFound, response.NotFound("Event not found"))
+			return
+		}
+	}
+
 	c.JSON(http.StatusOK, response.Success(toEventResponse(event)))
+}
+
+// ListMyEvents handles GET /events/my - lists events owned by current user (Organizer)
+func (h *EventHandler) ListMyEvents(c *gin.Context) {
+	// Get user ID from JWT context
+	userID, ok := middleware.GetUserID(c)
+	if !ok || userID == "" {
+		c.JSON(http.StatusUnauthorized, response.Unauthorized("User ID not found in token"))
+		return
+	}
+
+	// Parse pagination params
+	limit := 20
+	offset := 0
+	if l := c.Query("limit"); l != "" {
+		if parsed, err := strconv.Atoi(l); err == nil && parsed > 0 && parsed <= 100 {
+			limit = parsed
+		}
+	}
+	if o := c.Query("offset"); o != "" {
+		if parsed, err := strconv.Atoi(o); err == nil && parsed >= 0 {
+			offset = parsed
+		}
+	}
+
+	filter := &dto.EventListFilter{
+		OrganizerID: userID,
+		Status:      c.Query("status"),
+		Search:      c.Query("search"),
+		Limit:       limit,
+		Offset:      offset,
+	}
+
+	events, total, err := h.eventService.ListEvents(c.Request.Context(), filter)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, response.InternalError("Failed to list events"))
+		return
+	}
+
+	eventResponses := make([]*dto.EventResponse, len(events))
+	for i, event := range events {
+		eventResponses[i] = toEventResponse(event)
+	}
+
+	c.JSON(http.StatusOK, response.Paginated(eventResponses, offset/limit+1, limit, int64(total)))
 }
 
 // Create handles POST /events - creates a new event (Organizer only)

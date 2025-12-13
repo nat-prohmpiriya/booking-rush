@@ -110,6 +110,21 @@ export default function EditEventPage() {
 
       const updatedEvent = await eventsApi.update(event.id, editForm)
       setEvent(updatedEvent)
+      // Update editForm with latest data
+      setEditForm({
+        name: updatedEvent.name,
+        description: updatedEvent.description,
+        short_description: updatedEvent.short_description,
+        poster_url: updatedEvent.poster_url,
+        banner_url: updatedEvent.banner_url,
+        venue_name: updatedEvent.venue_name,
+        venue_address: updatedEvent.venue_address,
+        city: updatedEvent.city,
+        country: updatedEvent.country,
+        max_tickets_per_user: updatedEvent.max_tickets_per_user,
+        is_featured: updatedEvent.is_featured,
+        is_public: updatedEvent.is_public,
+      })
       setSuccessMessage("Event updated successfully!")
 
       setTimeout(() => setSuccessMessage(""), 3000)
@@ -311,19 +326,40 @@ export default function EditEventPage() {
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-4">
+          {/* Status Toggle */}
+          <div className="flex items-center gap-2">
+            <span className={`text-sm font-medium ${event.status === "draft" ? "text-muted-foreground" : "text-green-500"}`}>
+              {event.status === "draft" ? "Draft" : "Published"}
+            </span>
+            <Switch
+              checked={event.status === "published"}
+              onCheckedChange={async (checked) => {
+                try {
+                  setIsSaving(true)
+                  if (checked) {
+                    await eventsApi.publish(event.id)
+                  } else {
+                    await eventsApi.update(event.id, { status: "draft" })
+                  }
+                  await loadEventData()
+                  setSuccessMessage(checked ? "Event published!" : "Event set to draft!")
+                  setTimeout(() => setSuccessMessage(""), 3000)
+                } catch (err) {
+                  setError("Failed to update status")
+                } finally {
+                  setIsSaving(false)
+                }
+              }}
+              disabled={isSaving}
+            />
+          </div>
           <Link href={`/events/${event.id}`} target="_blank">
             <Button variant="outline">
               <Eye className="h-4 w-4 mr-2" />
               View Public
             </Button>
           </Link>
-          {event.status === "draft" && (
-            <Button onClick={handlePublishEvent} disabled={isSaving}>
-              <CheckCircle className="h-4 w-4 mr-2" />
-              Publish
-            </Button>
-          )}
         </div>
       </div>
 
@@ -459,7 +495,7 @@ export default function EditEventPage() {
                   id="description"
                   value={editForm.description || ""}
                   onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
-                  className="w-full min-h-[100px] px-3 py-2 border rounded-md bg-background"
+                  className="w-full min-h-[100px] px-3 py-2 border border-input rounded-md bg-input"
                 />
               </div>
 
@@ -573,7 +609,7 @@ export default function EditEventPage() {
                         <select
                           value={showForm.status || show.status}
                           onChange={(e) => setShowForm({ ...showForm, status: e.target.value })}
-                          className="w-full h-10 px-3 border rounded-md bg-background"
+                          className="w-full h-10 px-3 border border-input rounded-md bg-input"
                         >
                           <option value="scheduled">Scheduled</option>
                           <option value="on_sale">On Sale</option>

@@ -58,6 +58,7 @@ type UpdateEventRequest struct {
 	MaxTicketsPerUser *int       `json:"max_tickets_per_user"`
 	BookingStartAt    *time.Time `json:"booking_start_at"`
 	BookingEndAt      *time.Time `json:"booking_end_at"`
+	Status            *string    `json:"status"` // draft, published, cancelled, completed
 	IsFeatured        *bool      `json:"is_featured"`
 	IsPublic          *bool      `json:"is_public"`
 	MetaTitle         string     `json:"meta_title" binding:"max=255"`
@@ -118,13 +119,14 @@ type EventListResponse struct {
 
 // EventListFilter represents filters for listing events
 type EventListFilter struct {
-	Status     string `form:"status"`
-	TenantID   string `form:"-"`
-	CategoryID string `form:"category_id"`
-	City       string `form:"city"`
-	Search     string `form:"search"`
-	Limit      int    `form:"limit"`
-	Offset     int    `form:"offset"`
+	Status      string `form:"status"`
+	TenantID    string `form:"-"`
+	OrganizerID string `form:"-"`
+	CategoryID  string `form:"category_id"`
+	City        string `form:"city"`
+	Search      string `form:"search"`
+	Limit       int    `form:"limit"`
+	Offset      int    `form:"offset"`
 }
 
 // SetDefaults sets default values for pagination
