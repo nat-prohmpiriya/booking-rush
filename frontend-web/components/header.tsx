@@ -10,7 +10,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { Menu, User, LogOut, Ticket } from "lucide-react"
+import { Menu, User, LogOut, Ticket, Building2 } from "lucide-react"
 import { useState } from "react"
 import { useAuth } from "@/contexts/auth-context"
 
@@ -24,12 +24,16 @@ export function Header() {
     router.push("/")
   }
 
+  // Check if user can access organizer dashboard
+  const canAccessOrganizerDashboard = user?.role === "organizer" || user?.role === "admin" || user?.role === "super_admin"
+
   return (
     <header className="fixed top-0 w-full z-50 glass">
       <nav className="container mx-auto px-4 lg:px-8">
         <div className="flex items-center justify-between h-16 lg:h-20">
           {/* Logo */}
           <Link href="/" className="flex items-center space-x-2">
+            <span className="text-3xl">🎫</span>
             <div className="text-2xl font-bold bg-linear-to-r from-primary to-amber-400 bg-clip-text text-transparent">
               BookingRush
             </div>
@@ -72,6 +76,17 @@ export function Header() {
                       My Bookings
                     </Link>
                   </DropdownMenuItem>
+                  {canAccessOrganizerDashboard && (
+                    <>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem asChild>
+                        <Link href="/organizer" className="flex items-center cursor-pointer">
+                          <Building2 className="h-4 w-4 mr-2" />
+                          Organizer
+                        </Link>
+                      </DropdownMenuItem>
+                    </>
+                  )}
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={handleLogout} className="cursor-pointer text-destructive">
                     <LogOut className="h-4 w-4 mr-2" />
@@ -116,6 +131,11 @@ export function Header() {
                 <Link href="/profile" className="block text-foreground hover:text-primary transition-colors">
                   Profile
                 </Link>
+                {canAccessOrganizerDashboard && (
+                  <Link href="/organizer" className="block text-foreground hover:text-primary transition-colors">
+                    Organizer
+                  </Link>
+                )}
                 <Button
                   variant="outline"
                   onClick={handleLogout}
