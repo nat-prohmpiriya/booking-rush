@@ -69,7 +69,7 @@ func NewContainer(cfg *ContainerConfig) *Container {
 	// Initialize services
 	c.EventService = service.NewEventService(c.EventRepo)
 	c.ShowService = service.NewShowService(c.ShowRepo, c.EventRepo)
-	c.ShowZoneService = service.NewShowZoneService(c.ShowZoneRepo, c.ShowRepo)
+	c.ShowZoneService = service.NewShowZoneService(c.ShowZoneRepo, c.ShowRepo, c.Redis)
 	// c.TicketService = service.NewTicketService(c.TicketTypeRepo, c.EventRepo)
 	// c.VenueService = service.NewVenueService(c.VenueRepo, c.ZoneRepo, c.SeatRepo)
 

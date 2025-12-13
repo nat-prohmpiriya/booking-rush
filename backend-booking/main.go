@@ -167,6 +167,7 @@ func main() {
 			QueueTTL:             30 * time.Minute,
 			MaxQueueSize:         0, // Unlimited
 			EstimatedWaitPerUser: 3, // 3 seconds per user
+			JWTSecret:            cfg.JWT.Secret,
 		},
 	})
 
