@@ -65,8 +65,10 @@ type RedisClient interface {
 type IdempotencyConfig struct {
 	// Redis client for storing idempotency records
 	Redis RedisClient
-	// TTL for idempotency records (default: 24 hours)
+	// TTL for COMPLETED idempotency records (default: 24 hours)
 	TTL time.Duration
+	// TTL for PROCESSING idempotency records (default: 60 seconds)
+	ProcessingTTL time.Duration
 	// KeyExtractor extracts idempotency key from request (default: from header)
 	KeyExtractor func(*gin.Context) string
 	// SkipPaths is a list of paths that should skip idempotency check
@@ -85,7 +87,8 @@ type IdempotencyConfig struct {
 func DefaultIdempotencyConfig(redis RedisClient) *IdempotencyConfig {
 	return &IdempotencyConfig{
 		Redis:             redis,
-		TTL:               DefaultIdempotencyTTL,
+		TTL:               DefaultIdempotencyTTL, // 24h
+		ProcessingTTL:     60 * time.Second,      // 60s (Dual-TTL Strategy)
 		KeyExtractor:      defaultKeyExtractor,
 		SkipPaths:         []string{},
 		RequiredMethods:   []string{"POST", "PUT", "PATCH", "DELETE"},
@@ -102,6 +105,11 @@ func defaultKeyExtractor(c *gin.Context) string {
 
 // IdempotencyMiddleware creates a new idempotency middleware
 func IdempotencyMiddleware(config *IdempotencyConfig) gin.HandlerFunc {
+	// Set default ProcessingTTL if not set
+	if config.ProcessingTTL == 0 {
+		config.ProcessingTTL = 60 * time.Second
+	}
+
 	return func(c *gin.Context) {
 		// Check if path should skip idempotency check
 		for _, path := range config.SkipPaths {
@@ -178,8 +186,8 @@ func IdempotencyMiddleware(config *IdempotencyConfig) gin.HandlerFunc {
 			CreatedAt:   time.Now(),
 		}
 
-		// Try to set record (atomic)
-		if !trySetIdempotencyRecord(ctx, config.Redis, redisKey, record, config.TTL) {
+		// Try to set record (atomic) with SHORT ProcessingTTL
+		if !trySetIdempotencyRecord(ctx, config.Redis, redisKey, record, config.ProcessingTTL) {
 			// Another request beat us - retry get
 			existingRecord, _ = getIdempotencyRecord(ctx, config.Redis, redisKey)
 			if existingRecord != nil {
@@ -204,7 +212,7 @@ func IdempotencyMiddleware(config *IdempotencyConfig) gin.HandlerFunc {
 		// Process request
 		c.Next()
 
-		// Save completed record
+		// Save completed record with LONG TTL
 		now := time.Now()
 		record.Status = StatusCompleted
 		record.ResponseCode = rw.status
