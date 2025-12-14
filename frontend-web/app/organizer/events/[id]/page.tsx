@@ -31,6 +31,7 @@ import { Switch } from "@/components/ui/switch"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { DateTimePicker } from "@/components/ui/datetime-picker"
+import { DatePicker } from "@/components/ui/date-picker"
 import { TimePicker } from "@/components/ui/time-picker"
 import { eventsApi, showsApi, zonesApi, UpdateEventRequest, UpdateShowRequest, UpdateZoneRequest } from "@/lib/api"
 import type { EventResponse, ShowResponse, ShowZoneResponse } from "@/lib/api/types"
@@ -620,9 +621,9 @@ export default function EditEventPage() {
                     <div className="grid gap-4 md:grid-cols-3">
                       <div className="space-y-2">
                         <Label>Show Date</Label>
-                        <DateTimePicker
-                          value={showForm.show_date ? new Date(showForm.show_date).toISOString().slice(0, 16) : ""}
-                          onChange={(value) => setShowForm({ ...showForm, show_date: value ? new Date(value).toISOString().split('T')[0] : undefined })}
+                        <DatePicker
+                          value={showForm.show_date?.split('T')[0] || ""}
+                          onChange={(value) => setShowForm({ ...showForm, show_date: value })}
                           placeholder="Select show date"
                         />
                         <p className="text-xs text-muted-foreground">Date of the show</p>
@@ -630,11 +631,10 @@ export default function EditEventPage() {
                       <div className="space-y-2">
                         <Label>Start Time</Label>
                         <TimePicker
-                          value={showForm.start_time ? new Date(showForm.start_time).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false }) : ""}
+                          value={showForm.start_time?.split('T')[1]?.slice(0, 5) || ""}
                           onChange={(time) => {
-                            const baseDate = showForm.show_date || show.show_date
-                            const dateStr = new Date(baseDate).toISOString().split('T')[0]
-                            setShowForm({ ...showForm, start_time: `${dateStr}T${time}:00Z` })
+                            const baseDate = showForm.show_date?.split('T')[0] || show.show_date.split('T')[0]
+                            setShowForm({ ...showForm, start_time: `${baseDate}T${time}:00Z` })
                           }}
                           placeholder="Select start time"
                         />
@@ -643,11 +643,10 @@ export default function EditEventPage() {
                       <div className="space-y-2">
                         <Label>End Time</Label>
                         <TimePicker
-                          value={showForm.end_time ? new Date(showForm.end_time).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false }) : ""}
+                          value={showForm.end_time?.split('T')[1]?.slice(0, 5) || ""}
                           onChange={(time) => {
-                            const baseDate = showForm.show_date || show.show_date
-                            const dateStr = new Date(baseDate).toISOString().split('T')[0]
-                            setShowForm({ ...showForm, end_time: `${dateStr}T${time}:00Z` })
+                            const baseDate = showForm.show_date?.split('T')[0] || show.show_date.split('T')[0]
+                            setShowForm({ ...showForm, end_time: `${baseDate}T${time}:00Z` })
                           }}
                           placeholder="Select end time"
                         />
@@ -658,8 +657,8 @@ export default function EditEventPage() {
                       <div className="space-y-2">
                         <Label>Sale Start Date & Time</Label>
                         <DateTimePicker
-                          value={showForm.sale_start_at ? new Date(showForm.sale_start_at).toISOString().slice(0, 16) : ""}
-                          onChange={(value) => setShowForm({ ...showForm, sale_start_at: value ? new Date(value).toISOString() : undefined })}
+                          value={showForm.sale_start_at?.slice(0, 16) || ""}
+                          onChange={(value) => setShowForm({ ...showForm, sale_start_at: value ? `${value}:00Z` : undefined })}
                           placeholder="Select sale start"
                         />
                         <p className="text-xs text-muted-foreground">When ticket sales will open</p>
@@ -667,8 +666,8 @@ export default function EditEventPage() {
                       <div className="space-y-2">
                         <Label>Sale End Date & Time</Label>
                         <DateTimePicker
-                          value={showForm.sale_end_at ? new Date(showForm.sale_end_at).toISOString().slice(0, 16) : ""}
-                          onChange={(value) => setShowForm({ ...showForm, sale_end_at: value ? new Date(value).toISOString() : undefined })}
+                          value={showForm.sale_end_at?.slice(0, 16) || ""}
+                          onChange={(value) => setShowForm({ ...showForm, sale_end_at: value ? `${value}:00Z` : undefined })}
                           placeholder="Select sale end"
                         />
                         <p className="text-xs text-muted-foreground">When ticket sales will close</p>

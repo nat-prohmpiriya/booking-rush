@@ -378,8 +378,8 @@ export default function CreateEventPage() {
                   <div className="space-y-2">
                     <Label>Date *</Label>
                     <DatePicker
-                      date={show.show_date ? new Date(show.show_date) : undefined}
-                      onDateChange={(date) => handleShowChange(showIndex, "show_date", date ? format(date, "yyyy-MM-dd") : "")}
+                      value={show.show_date || ""}
+                      onChange={(value) => handleShowChange(showIndex, "show_date", value)}
                       placeholder="Select date"
                     />
                   </div>

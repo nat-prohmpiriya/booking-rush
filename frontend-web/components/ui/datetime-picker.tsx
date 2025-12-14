@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { format, parse } from "date-fns"
+import { format } from "date-fns"
 import { Calendar as CalendarIcon, Clock } from "lucide-react"
 
 import { cn } from "@/lib/utils"
@@ -21,6 +21,51 @@ interface DateTimePickerProps {
   disabled?: boolean
 }
 
+// Parse date string to components (avoid timezone issues)
+function parseDateTimeString(val: string | undefined): {
+  year: number
+  month: number
+  day: number
+  hour: string
+  minute: string
+} | null {
+  if (!val) return null
+  try {
+    // Handle ISO string: 2024-12-28T10:00:00.000Z or datetime-local: 2024-12-28T10:00
+    const cleanVal = val.replace("Z", "")
+    const [datePart, timePart] = cleanVal.split("T")
+    if (!datePart) return null
+
+    const [year, month, day] = datePart.split("-").map(Number)
+    if (!year || !month || !day) return null
+
+    let hour = "00"
+    let minute = "00"
+    if (timePart) {
+      const [h, m] = timePart.split(":")
+      hour = h?.padStart(2, "0") || "00"
+      minute = m?.padStart(2, "0") || "00"
+    }
+
+    return { year, month, day, hour, minute }
+  } catch {
+    return null
+  }
+}
+
+// Create Date object from components (local time)
+function createLocalDate(year: number, month: number, day: number): Date {
+  return new Date(year, month - 1, day)
+}
+
+// Format to datetime-local string: YYYY-MM-DDTHH:MM
+function formatDateTime(year: number, month: number, day: number, hour: string, minute: string): string {
+  const y = year.toString()
+  const m = String(month).padStart(2, "0")
+  const d = String(day).padStart(2, "0")
+  return `${y}-${m}-${d}T${hour}:${minute}`
+}
+
 export function DateTimePicker({
   value,
   onChange,
@@ -30,56 +75,43 @@ export function DateTimePicker({
 }: DateTimePickerProps) {
   const [open, setOpen] = React.useState(false)
 
-  // Parse value to Date and time string
-  const parseValue = (val: string | undefined) => {
-    if (!val) return { date: undefined, hour: "00", minute: "00" }
-    try {
-      const date = new Date(val)
-      if (isNaN(date.getTime())) return { date: undefined, hour: "00", minute: "00" }
-      return {
-        date,
-        hour: date.getHours().toString().padStart(2, "0"),
-        minute: date.getMinutes().toString().padStart(2, "0"),
-      }
-    } catch {
-      return { date: undefined, hour: "00", minute: "00" }
-    }
-  }
+  const parsed = parseDateTimeString(value)
 
-  const { date: selectedDate, hour: selectedHour, minute: selectedMinute } = parseValue(value)
+  const selectedDate = parsed ? createLocalDate(parsed.year, parsed.month, parsed.day) : undefined
+  const selectedHour = parsed?.hour || "00"
+  const selectedMinute = parsed?.minute || "00"
 
   // Generate hours (00-23)
   const hours = Array.from({ length: 24 }, (_, i) => i.toString().padStart(2, "0"))
   // Generate minutes (00, 15, 30, 45)
   const minutes = ["00", "15", "30", "45"]
 
-  const updateDateTime = (newDate?: Date, newHour?: string, newMinute?: string) => {
-    const d = newDate || selectedDate || new Date()
-    const h = newHour ?? selectedHour
-    const m = newMinute ?? selectedMinute
-
-    d.setHours(parseInt(h, 10))
-    d.setMinutes(parseInt(m, 10))
-    d.setSeconds(0)
-    d.setMilliseconds(0)
-
-    // Return in datetime-local format: YYYY-MM-DDTHH:MM
-    const formatted = format(d, "yyyy-MM-dd'T'HH:mm")
-    onChange?.(formatted)
-  }
-
   const handleDateSelect = (date: Date | undefined) => {
-    if (date) {
-      updateDateTime(date)
-    }
+    if (!date) return
+    const year = date.getFullYear()
+    const month = date.getMonth() + 1
+    const day = date.getDate()
+    onChange?.(formatDateTime(year, month, day, selectedHour, selectedMinute))
   }
 
   const handleHourSelect = (hour: string) => {
-    updateDateTime(undefined, hour)
+    if (!parsed) {
+      // If no date selected yet, use today
+      const today = new Date()
+      onChange?.(formatDateTime(today.getFullYear(), today.getMonth() + 1, today.getDate(), hour, selectedMinute))
+    } else {
+      onChange?.(formatDateTime(parsed.year, parsed.month, parsed.day, hour, selectedMinute))
+    }
   }
 
   const handleMinuteSelect = (minute: string) => {
-    updateDateTime(undefined, undefined, minute)
+    if (!parsed) {
+      // If no date selected yet, use today
+      const today = new Date()
+      onChange?.(formatDateTime(today.getFullYear(), today.getMonth() + 1, today.getDate(), selectedHour, minute))
+    } else {
+      onChange?.(formatDateTime(parsed.year, parsed.month, parsed.day, selectedHour, minute))
+    }
   }
 
   const formatDisplayValue = () => {
