@@ -7,6 +7,7 @@ import (
 func TestNewPayment(t *testing.T) {
 	tests := []struct {
 		name      string
+		tenantID  string
 		bookingID string
 		userID    string
 		amount    float64
@@ -16,6 +17,7 @@ func TestNewPayment(t *testing.T) {
 	}{
 		{
 			name:      "valid payment",
+			tenantID:  "tenant-123",
 			bookingID: "booking-123",
 			userID:    "user-123",
 			amount:    100.00,
@@ -24,7 +26,18 @@ func TestNewPayment(t *testing.T) {
 			wantErr:   false,
 		},
 		{
+			name:      "missing tenant_id",
+			tenantID:  "",
+			bookingID: "booking-123",
+			userID:    "user-123",
+			amount:    100.00,
+			currency:  "THB",
+			method:    PaymentMethodCreditCard,
+			wantErr:   true,
+		},
+		{
 			name:      "missing booking_id",
+			tenantID:  "tenant-123",
 			bookingID: "",
 			userID:    "user-123",
 			amount:    100.00,
@@ -34,6 +47,7 @@ func TestNewPayment(t *testing.T) {
 		},
 		{
 			name:      "missing user_id",
+			tenantID:  "tenant-123",
 			bookingID: "booking-123",
 			userID:    "",
 			amount:    100.00,
@@ -43,6 +57,7 @@ func TestNewPayment(t *testing.T) {
 		},
 		{
 			name:      "zero amount",
+			tenantID:  "tenant-123",
 			bookingID: "booking-123",
 			userID:    "user-123",
 			amount:    0,
@@ -52,6 +67,7 @@ func TestNewPayment(t *testing.T) {
 		},
 		{
 			name:      "negative amount",
+			tenantID:  "tenant-123",
 			bookingID: "booking-123",
 			userID:    "user-123",
 			amount:    -50.00,
@@ -60,19 +76,20 @@ func TestNewPayment(t *testing.T) {
 			wantErr:   true,
 		},
 		{
-			name:      "missing currency",
+			name:      "empty currency defaults to THB",
+			tenantID:  "tenant-123",
 			bookingID: "booking-123",
 			userID:    "user-123",
 			amount:    100.00,
 			currency:  "",
 			method:    PaymentMethodCreditCard,
-			wantErr:   true,
+			wantErr:   false,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			payment, err := NewPayment(tt.bookingID, tt.userID, tt.amount, tt.currency, tt.method)
+			payment, err := NewPayment(tt.tenantID, tt.bookingID, tt.userID, tt.amount, tt.currency, tt.method)
 
 			if tt.wantErr {
 				if err == nil {
@@ -88,6 +105,9 @@ func TestNewPayment(t *testing.T) {
 
 			if payment.ID == "" {
 				t.Error("Expected payment ID to be set")
+			}
+			if payment.TenantID != tt.tenantID {
+				t.Errorf("Expected tenant_id %s, got %s", tt.tenantID, payment.TenantID)
 			}
 			if payment.BookingID != tt.bookingID {
 				t.Errorf("Expected booking_id %s, got %s", tt.bookingID, payment.BookingID)
@@ -106,7 +126,7 @@ func TestNewPayment(t *testing.T) {
 }
 
 func TestPayment_MarkProcessing(t *testing.T) {
-	payment, _ := NewPayment("booking-123", "user-123", 100.00, "THB", PaymentMethodCreditCard)
+	payment, _ := NewPayment("tenant-123", "booking-123", "user-123", 100.00, "THB", PaymentMethodCreditCard)
 
 	err := payment.MarkProcessing()
 	if err != nil {
@@ -125,44 +145,37 @@ func TestPayment_MarkProcessing(t *testing.T) {
 }
 
 func TestPayment_Complete(t *testing.T) {
-	payment, _ := NewPayment("booking-123", "user-123", 100.00, "THB", PaymentMethodCreditCard)
+	payment, _ := NewPayment("tenant-123", "booking-123", "user-123", 100.00, "THB", PaymentMethodCreditCard)
 
-	// Should fail from pending status
-	err := payment.Complete("txn-123")
-	if err == nil {
-		t.Error("Expected error when completing from pending status")
-	}
-
-	// Mark as processing first
-	payment.MarkProcessing()
-
-	// Should fail without transaction ID
-	err = payment.Complete("")
-	if err == nil {
-		t.Error("Expected error without transaction ID")
-	}
-
-	// Should succeed
-	err = payment.Complete("txn-123")
+	// Can complete from pending (fast path)
+	err := payment.Complete("pi_123")
 	if err != nil {
-		t.Errorf("Unexpected error: %v", err)
+		t.Errorf("Unexpected error completing from pending: %v", err)
 	}
 
-	if payment.Status != PaymentStatusCompleted {
-		t.Errorf("Expected status completed, got %s", payment.Status)
+	if payment.Status != PaymentStatusSucceeded {
+		t.Errorf("Expected status succeeded, got %s", payment.Status)
 	}
-	if payment.TransactionID != "txn-123" {
-		t.Errorf("Expected transaction_id txn-123, got %s", payment.TransactionID)
+	if payment.GatewayPaymentID != "pi_123" {
+		t.Errorf("Expected gateway_payment_id pi_123, got %s", payment.GatewayPaymentID)
 	}
-	if payment.CompletedAt == nil {
-		t.Error("Expected completed_at to be set")
+	if payment.ProcessedAt == nil {
+		t.Error("Expected processed_at to be set")
+	}
+
+	// Test completing from processing
+	payment2, _ := NewPayment("tenant-123", "booking-456", "user-123", 100.00, "THB", PaymentMethodCreditCard)
+	payment2.MarkProcessing()
+	err = payment2.Complete("pi_456")
+	if err != nil {
+		t.Errorf("Unexpected error completing from processing: %v", err)
 	}
 }
 
 func TestPayment_Fail(t *testing.T) {
-	payment, _ := NewPayment("booking-123", "user-123", 100.00, "THB", PaymentMethodCreditCard)
+	payment, _ := NewPayment("tenant-123", "booking-123", "user-123", 100.00, "THB", PaymentMethodCreditCard)
 
-	err := payment.Fail("insufficient funds")
+	err := payment.Fail("card_declined", "insufficient funds")
 	if err != nil {
 		t.Errorf("Unexpected error: %v", err)
 	}
@@ -170,26 +183,28 @@ func TestPayment_Fail(t *testing.T) {
 	if payment.Status != PaymentStatusFailed {
 		t.Errorf("Expected status failed, got %s", payment.Status)
 	}
-	if payment.FailureReason != "insufficient funds" {
-		t.Errorf("Expected failure_reason 'insufficient funds', got '%s'", payment.FailureReason)
+	if payment.ErrorCode != "card_declined" {
+		t.Errorf("Expected error_code 'card_declined', got '%s'", payment.ErrorCode)
+	}
+	if payment.ErrorMessage != "insufficient funds" {
+		t.Errorf("Expected error_message 'insufficient funds', got '%s'", payment.ErrorMessage)
 	}
 }
 
 func TestPayment_Refund(t *testing.T) {
-	payment, _ := NewPayment("booking-123", "user-123", 100.00, "THB", PaymentMethodCreditCard)
+	payment, _ := NewPayment("tenant-123", "booking-123", "user-123", 100.00, "THB", PaymentMethodCreditCard)
 
 	// Should fail from pending status
-	err := payment.Refund()
+	err := payment.Refund(100.00, "customer request")
 	if err == nil {
 		t.Error("Expected error when refunding from pending status")
 	}
 
 	// Complete the payment first
-	payment.MarkProcessing()
-	payment.Complete("txn-123")
+	payment.Complete("pi_123")
 
 	// Should succeed
-	err = payment.Refund()
+	err = payment.Refund(100.00, "customer request")
 	if err != nil {
 		t.Errorf("Unexpected error: %v", err)
 	}
@@ -197,10 +212,16 @@ func TestPayment_Refund(t *testing.T) {
 	if payment.Status != PaymentStatusRefunded {
 		t.Errorf("Expected status refunded, got %s", payment.Status)
 	}
+	if payment.RefundAmount == nil || *payment.RefundAmount != 100.00 {
+		t.Error("Expected refund_amount to be 100.00")
+	}
+	if payment.RefundReason != "customer request" {
+		t.Errorf("Expected refund_reason 'customer request', got '%s'", payment.RefundReason)
+	}
 }
 
 func TestPayment_Cancel(t *testing.T) {
-	payment, _ := NewPayment("booking-123", "user-123", 100.00, "THB", PaymentMethodCreditCard)
+	payment, _ := NewPayment("tenant-123", "booking-123", "user-123", 100.00, "THB", PaymentMethodCreditCard)
 
 	err := payment.Cancel()
 	if err != nil {
@@ -212,7 +233,7 @@ func TestPayment_Cancel(t *testing.T) {
 	}
 
 	// Should fail if called again
-	payment2, _ := NewPayment("booking-456", "user-123", 100.00, "THB", PaymentMethodCreditCard)
+	payment2, _ := NewPayment("tenant-123", "booking-456", "user-123", 100.00, "THB", PaymentMethodCreditCard)
 	payment2.MarkProcessing()
 
 	err = payment2.Cancel()
@@ -222,7 +243,7 @@ func TestPayment_Cancel(t *testing.T) {
 }
 
 func TestPayment_IsFinal(t *testing.T) {
-	payment, _ := NewPayment("booking-123", "user-123", 100.00, "THB", PaymentMethodCreditCard)
+	payment, _ := NewPayment("tenant-123", "booking-123", "user-123", 100.00, "THB", PaymentMethodCreditCard)
 
 	if payment.IsFinal() {
 		t.Error("Pending payment should not be final")
@@ -233,23 +254,22 @@ func TestPayment_IsFinal(t *testing.T) {
 		t.Error("Processing payment should not be final")
 	}
 
-	payment.Complete("txn-123")
+	payment.Complete("pi_123")
 	if !payment.IsFinal() {
-		t.Error("Completed payment should be final")
+		t.Error("Succeeded payment should be final")
 	}
 }
 
 func TestPayment_IsSuccessful(t *testing.T) {
-	payment, _ := NewPayment("booking-123", "user-123", 100.00, "THB", PaymentMethodCreditCard)
+	payment, _ := NewPayment("tenant-123", "booking-123", "user-123", 100.00, "THB", PaymentMethodCreditCard)
 
 	if payment.IsSuccessful() {
 		t.Error("Pending payment should not be successful")
 	}
 
-	payment.MarkProcessing()
-	payment.Complete("txn-123")
+	payment.Complete("pi_123")
 
 	if !payment.IsSuccessful() {
-		t.Error("Completed payment should be successful")
+		t.Error("Succeeded payment should be successful")
 	}
 }

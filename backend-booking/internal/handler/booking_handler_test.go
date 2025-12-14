@@ -16,14 +16,15 @@ import (
 
 // MockBookingService is a mock implementation of BookingService for testing
 type MockBookingService struct {
-	ReserveSeatsFunc       func(ctx context.Context, userID string, req *dto.ReserveSeatsRequest) (*dto.ReserveSeatsResponse, error)
-	ConfirmBookingFunc     func(ctx context.Context, bookingID, userID string, req *dto.ConfirmBookingRequest) (*dto.ConfirmBookingResponse, error)
-	CancelBookingFunc      func(ctx context.Context, bookingID, userID string) (*dto.ReleaseBookingResponse, error)
-	ReleaseBookingFunc     func(ctx context.Context, bookingID, userID string) (*dto.ReleaseBookingResponse, error)
-	GetBookingFunc         func(ctx context.Context, bookingID, userID string) (*dto.BookingResponse, error)
-	GetUserBookingsFunc    func(ctx context.Context, userID string, page, pageSize int) (*dto.PaginatedResponse, error)
-	GetPendingBookingsFunc func(ctx context.Context, limit int) ([]*dto.BookingResponse, error)
-	ExpireReservationsFunc func(ctx context.Context, limit int) (int, error)
+	ReserveSeatsFunc           func(ctx context.Context, userID string, req *dto.ReserveSeatsRequest) (*dto.ReserveSeatsResponse, error)
+	ConfirmBookingFunc         func(ctx context.Context, bookingID, userID string, req *dto.ConfirmBookingRequest) (*dto.ConfirmBookingResponse, error)
+	CancelBookingFunc          func(ctx context.Context, bookingID, userID string) (*dto.ReleaseBookingResponse, error)
+	ReleaseBookingFunc         func(ctx context.Context, bookingID, userID string) (*dto.ReleaseBookingResponse, error)
+	GetBookingFunc             func(ctx context.Context, bookingID, userID string) (*dto.BookingResponse, error)
+	GetUserBookingsFunc        func(ctx context.Context, userID string, page, pageSize int) (*dto.PaginatedResponse, error)
+	GetUserBookingSummaryFunc  func(ctx context.Context, userID, eventID string) (*dto.UserBookingSummaryResponse, error)
+	GetPendingBookingsFunc     func(ctx context.Context, limit int) ([]*dto.BookingResponse, error)
+	ExpireReservationsFunc     func(ctx context.Context, limit int) (int, error)
 }
 
 func (m *MockBookingService) ReserveSeats(ctx context.Context, userID string, req *dto.ReserveSeatsRequest) (*dto.ReserveSeatsResponse, error) {
@@ -64,6 +65,13 @@ func (m *MockBookingService) GetBooking(ctx context.Context, bookingID, userID s
 func (m *MockBookingService) GetUserBookings(ctx context.Context, userID string, page, pageSize int) (*dto.PaginatedResponse, error) {
 	if m.GetUserBookingsFunc != nil {
 		return m.GetUserBookingsFunc(ctx, userID, page, pageSize)
+	}
+	return nil, nil
+}
+
+func (m *MockBookingService) GetUserBookingSummary(ctx context.Context, userID, eventID string) (*dto.UserBookingSummaryResponse, error) {
+	if m.GetUserBookingSummaryFunc != nil {
+		return m.GetUserBookingSummaryFunc(ctx, userID, eventID)
 	}
 	return nil, nil
 }

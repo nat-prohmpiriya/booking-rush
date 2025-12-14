@@ -128,12 +128,12 @@ func TestPaymentService_CreateAndProcess_Integration(t *testing.T) {
 		t.Fatalf("Failed to process payment: %v", err)
 	}
 
-	if processed.Status != domain.PaymentStatusCompleted {
-		t.Errorf("Expected status 'completed', got '%s'", processed.Status)
+	if processed.Status != domain.PaymentStatusSucceeded {
+		t.Errorf("Expected status 'succeeded', got '%s'", processed.Status)
 	}
 
-	if processed.TransactionID == "" {
-		t.Error("Expected TransactionID to be set")
+	if processed.GatewayPaymentID == "" {
+		t.Error("Expected GatewayPaymentID to be set")
 	}
 }
 
@@ -354,7 +354,7 @@ func TestPaymentService_FailedPayment_Integration(t *testing.T) {
 		t.Errorf("Expected status 'failed', got '%s'", processed.Status)
 	}
 
-	if processed.FailureReason == "" {
-		t.Error("Expected failure reason to be set")
+	if processed.ErrorMessage == "" {
+		t.Error("Expected error message to be set")
 	}
 }

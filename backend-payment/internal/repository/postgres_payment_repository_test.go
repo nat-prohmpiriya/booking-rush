@@ -40,28 +40,6 @@ func setupTestDB(t *testing.T) *database.PostgresDB {
 		t.Fatalf("Failed to connect to database: %v", err)
 	}
 
-	// Create table if not exists
-	_, err = db.Pool().Exec(ctx, `
-		CREATE TABLE IF NOT EXISTS payments (
-			id VARCHAR(36) PRIMARY KEY,
-			booking_id VARCHAR(36) NOT NULL UNIQUE,
-			user_id VARCHAR(36) NOT NULL,
-			amount DECIMAL(12,2) NOT NULL,
-			currency VARCHAR(3) NOT NULL DEFAULT 'THB',
-			status VARCHAR(20) NOT NULL DEFAULT 'pending',
-			method VARCHAR(20) NOT NULL,
-			transaction_id VARCHAR(255),
-			failure_reason TEXT,
-			metadata JSONB DEFAULT '{}',
-			created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
-			updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
-			completed_at TIMESTAMP WITH TIME ZONE
-		)
-	`)
-	if err != nil {
-		t.Fatalf("Failed to create payments table: %v", err)
-	}
-
 	return db
 }
 
@@ -90,7 +68,7 @@ func TestPostgresPaymentRepository_Create(t *testing.T) {
 	repo := NewPostgresPaymentRepository(db)
 	ctx := context.Background()
 
-	payment, err := domain.NewPayment("test-booking-create", "user-456", 1000.00, "THB", domain.PaymentMethodCreditCard)
+	payment, err := domain.NewPayment("tenant-123", "test-booking-create", "user-456", 1000.00, "THB", domain.PaymentMethodCreditCard)
 	if err != nil {
 		t.Fatalf("Failed to create payment: %v", err)
 	}
@@ -129,8 +107,8 @@ func TestPostgresPaymentRepository_Create_Duplicate(t *testing.T) {
 	repo := NewPostgresPaymentRepository(db)
 	ctx := context.Background()
 
-	payment1, _ := domain.NewPayment("test-booking-dup", "user-456", 1000.00, "THB", domain.PaymentMethodCreditCard)
-	payment2, _ := domain.NewPayment("test-booking-dup", "user-789", 500.00, "THB", domain.PaymentMethodDebitCard)
+	payment1, _ := domain.NewPayment("tenant-123", "test-booking-dup", "user-456", 1000.00, "THB", domain.PaymentMethodCreditCard)
+	payment2, _ := domain.NewPayment("tenant-123", "test-booking-dup", "user-789", 500.00, "THB", domain.PaymentMethodDebitCard)
 
 	err := repo.Create(ctx, payment1)
 	if err != nil {
@@ -153,7 +131,7 @@ func TestPostgresPaymentRepository_GetByBookingID(t *testing.T) {
 	repo := NewPostgresPaymentRepository(db)
 	ctx := context.Background()
 
-	payment, _ := domain.NewPayment("test-booking-get", "user-456", 1500.00, "THB", domain.PaymentMethodCreditCard)
+	payment, _ := domain.NewPayment("tenant-123", "test-booking-get", "user-456", 1500.00, "THB", domain.PaymentMethodCreditCard)
 	repo.Create(ctx, payment)
 
 	found, err := repo.GetByBookingID(ctx, "test-booking-get")
@@ -180,6 +158,7 @@ func TestPostgresPaymentRepository_GetByUserID(t *testing.T) {
 	testUserID := "test-user-list"
 	for i := 0; i < 3; i++ {
 		payment, _ := domain.NewPayment(
+			"tenant-123",
 			"test-booking-user-"+string(rune('A'+i)),
 			testUserID,
 			float64(100*(i+1)),
@@ -209,12 +188,11 @@ func TestPostgresPaymentRepository_Update(t *testing.T) {
 	repo := NewPostgresPaymentRepository(db)
 	ctx := context.Background()
 
-	payment, _ := domain.NewPayment("test-booking-update", "user-456", 2000.00, "THB", domain.PaymentMethodCreditCard)
+	payment, _ := domain.NewPayment("tenant-123", "test-booking-update", "user-456", 2000.00, "THB", domain.PaymentMethodCreditCard)
 	repo.Create(ctx, payment)
 
 	// Update payment status
-	payment.MarkProcessing()
-	payment.Complete("txn-test-123")
+	payment.Complete("pi_test_123")
 
 	err := repo.Update(ctx, payment)
 	if err != nil {
@@ -223,16 +201,16 @@ func TestPostgresPaymentRepository_Update(t *testing.T) {
 
 	// Verify update
 	found, _ := repo.GetByID(ctx, payment.ID)
-	if found.Status != domain.PaymentStatusCompleted {
-		t.Errorf("Expected status 'completed', got '%s'", found.Status)
+	if found.Status != domain.PaymentStatusSucceeded {
+		t.Errorf("Expected status 'succeeded', got '%s'", found.Status)
 	}
 
-	if found.TransactionID != "txn-test-123" {
-		t.Errorf("Expected TransactionID 'txn-test-123', got '%s'", found.TransactionID)
+	if found.GatewayPaymentID != "pi_test_123" {
+		t.Errorf("Expected GatewayPaymentID 'pi_test_123', got '%s'", found.GatewayPaymentID)
 	}
 }
 
-func TestPostgresPaymentRepository_GetByTransactionID(t *testing.T) {
+func TestPostgresPaymentRepository_GetByGatewayPaymentID(t *testing.T) {
 	skipIfNoIntegration(t)
 
 	db := setupTestDB(t)
@@ -242,20 +220,19 @@ func TestPostgresPaymentRepository_GetByTransactionID(t *testing.T) {
 	repo := NewPostgresPaymentRepository(db)
 	ctx := context.Background()
 
-	payment, _ := domain.NewPayment("test-booking-txn", "user-456", 3000.00, "THB", domain.PaymentMethodCreditCard)
+	payment, _ := domain.NewPayment("tenant-123", "test-booking-txn", "user-456", 3000.00, "THB", domain.PaymentMethodCreditCard)
 	repo.Create(ctx, payment)
 
-	payment.MarkProcessing()
-	payment.Complete("txn-find-me-123")
+	payment.Complete("pi_find_me_123")
 	repo.Update(ctx, payment)
 
-	found, err := repo.GetByTransactionID(ctx, "txn-find-me-123")
+	found, err := repo.GetByGatewayPaymentID(ctx, "pi_find_me_123")
 	if err != nil {
-		t.Fatalf("Failed to get payment by transaction ID: %v", err)
+		t.Fatalf("Failed to get payment by gateway payment ID: %v", err)
 	}
 
-	if found.TransactionID != "txn-find-me-123" {
-		t.Errorf("Expected TransactionID 'txn-find-me-123', got '%s'", found.TransactionID)
+	if found.GatewayPaymentID != "pi_find_me_123" {
+		t.Errorf("Expected GatewayPaymentID 'pi_find_me_123', got '%s'", found.GatewayPaymentID)
 	}
 }
 
@@ -278,7 +255,7 @@ func TestPostgresPaymentRepository_NotFound(t *testing.T) {
 		t.Errorf("Expected ErrPaymentNotFound, got %v", err)
 	}
 
-	_, err = repo.GetByTransactionID(ctx, "non-existent-txn")
+	_, err = repo.GetByGatewayPaymentID(ctx, "non-existent-pi")
 	if err != domain.ErrPaymentNotFound {
 		t.Errorf("Expected ErrPaymentNotFound, got %v", err)
 	}
@@ -293,7 +270,7 @@ func TestPostgresPaymentRepository_Update_NotFound(t *testing.T) {
 	repo := NewPostgresPaymentRepository(db)
 	ctx := context.Background()
 
-	payment, _ := domain.NewPayment("test-booking-not-exist", "user-456", 1000.00, "THB", domain.PaymentMethodCreditCard)
+	payment, _ := domain.NewPayment("tenant-123", "test-booking-not-exist", "user-456", 1000.00, "THB", domain.PaymentMethodCreditCard)
 
 	err := repo.Update(ctx, payment)
 	if err != domain.ErrPaymentNotFound {

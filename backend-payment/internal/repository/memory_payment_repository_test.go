@@ -22,7 +22,7 @@ func TestMemoryPaymentRepository_Create(t *testing.T) {
 	repo := NewMemoryPaymentRepository()
 	ctx := context.Background()
 
-	payment, _ := domain.NewPayment("booking-123", "user-456", 1000.00, "THB", domain.PaymentMethodCreditCard)
+	payment, _ := domain.NewPayment("tenant-123", "booking-123", "user-456", 1000.00, "THB", domain.PaymentMethodCreditCard)
 
 	err := repo.Create(ctx, payment)
 	if err != nil {
@@ -38,8 +38,8 @@ func TestMemoryPaymentRepository_Create_Duplicate(t *testing.T) {
 	repo := NewMemoryPaymentRepository()
 	ctx := context.Background()
 
-	payment1, _ := domain.NewPayment("booking-123", "user-456", 1000.00, "THB", domain.PaymentMethodCreditCard)
-	payment2, _ := domain.NewPayment("booking-123", "user-456", 500.00, "THB", domain.PaymentMethodCreditCard)
+	payment1, _ := domain.NewPayment("tenant-123", "booking-123", "user-456", 1000.00, "THB", domain.PaymentMethodCreditCard)
+	payment2, _ := domain.NewPayment("tenant-123", "booking-123", "user-456", 500.00, "THB", domain.PaymentMethodCreditCard)
 
 	repo.Create(ctx, payment1)
 	err := repo.Create(ctx, payment2)
@@ -53,7 +53,7 @@ func TestMemoryPaymentRepository_GetByID(t *testing.T) {
 	repo := NewMemoryPaymentRepository()
 	ctx := context.Background()
 
-	payment, _ := domain.NewPayment("booking-123", "user-456", 1000.00, "THB", domain.PaymentMethodCreditCard)
+	payment, _ := domain.NewPayment("tenant-123", "booking-123", "user-456", 1000.00, "THB", domain.PaymentMethodCreditCard)
 	repo.Create(ctx, payment)
 
 	found, err := repo.GetByID(ctx, payment.ID)
@@ -80,7 +80,7 @@ func TestMemoryPaymentRepository_GetByBookingID(t *testing.T) {
 	repo := NewMemoryPaymentRepository()
 	ctx := context.Background()
 
-	payment, _ := domain.NewPayment("booking-123", "user-456", 1000.00, "THB", domain.PaymentMethodCreditCard)
+	payment, _ := domain.NewPayment("tenant-123", "booking-123", "user-456", 1000.00, "THB", domain.PaymentMethodCreditCard)
 	repo.Create(ctx, payment)
 
 	found, err := repo.GetByBookingID(ctx, "booking-123")
@@ -98,9 +98,9 @@ func TestMemoryPaymentRepository_GetByUserID(t *testing.T) {
 	ctx := context.Background()
 
 	// Create multiple payments for the same user
-	payment1, _ := domain.NewPayment("booking-1", "user-456", 1000.00, "THB", domain.PaymentMethodCreditCard)
-	payment2, _ := domain.NewPayment("booking-2", "user-456", 500.00, "THB", domain.PaymentMethodCreditCard)
-	payment3, _ := domain.NewPayment("booking-3", "user-789", 750.00, "THB", domain.PaymentMethodCreditCard)
+	payment1, _ := domain.NewPayment("tenant-123", "booking-1", "user-456", 1000.00, "THB", domain.PaymentMethodCreditCard)
+	payment2, _ := domain.NewPayment("tenant-123", "booking-2", "user-456", 500.00, "THB", domain.PaymentMethodCreditCard)
+	payment3, _ := domain.NewPayment("tenant-123", "booking-3", "user-789", 750.00, "THB", domain.PaymentMethodCreditCard)
 
 	repo.Create(ctx, payment1)
 	repo.Create(ctx, payment2)
@@ -122,7 +122,7 @@ func TestMemoryPaymentRepository_GetByUserID_Pagination(t *testing.T) {
 
 	// Create multiple payments
 	for i := 0; i < 5; i++ {
-		payment, _ := domain.NewPayment("booking-"+string(rune('A'+i)), "user-456", 100.00, "THB", domain.PaymentMethodCreditCard)
+		payment, _ := domain.NewPayment("tenant-123", "booking-"+string(rune('A'+i)), "user-456", 100.00, "THB", domain.PaymentMethodCreditCard)
 		repo.Create(ctx, payment)
 	}
 
@@ -149,12 +149,11 @@ func TestMemoryPaymentRepository_Update(t *testing.T) {
 	repo := NewMemoryPaymentRepository()
 	ctx := context.Background()
 
-	payment, _ := domain.NewPayment("booking-123", "user-456", 1000.00, "THB", domain.PaymentMethodCreditCard)
+	payment, _ := domain.NewPayment("tenant-123", "booking-123", "user-456", 1000.00, "THB", domain.PaymentMethodCreditCard)
 	repo.Create(ctx, payment)
 
 	// Update payment
-	payment.MarkProcessing()
-	payment.Complete("txn-123")
+	payment.Complete("pi_123")
 
 	err := repo.Update(ctx, payment)
 	if err != nil {
@@ -163,12 +162,12 @@ func TestMemoryPaymentRepository_Update(t *testing.T) {
 
 	// Verify update
 	found, _ := repo.GetByID(ctx, payment.ID)
-	if found.Status != domain.PaymentStatusCompleted {
-		t.Errorf("Expected status completed, got %s", found.Status)
+	if found.Status != domain.PaymentStatusSucceeded {
+		t.Errorf("Expected status succeeded, got %s", found.Status)
 	}
 
-	if found.TransactionID != "txn-123" {
-		t.Errorf("Expected transaction ID 'txn-123', got '%s'", found.TransactionID)
+	if found.GatewayPaymentID != "pi_123" {
+		t.Errorf("Expected gateway payment ID 'pi_123', got '%s'", found.GatewayPaymentID)
 	}
 }
 
@@ -176,7 +175,7 @@ func TestMemoryPaymentRepository_Update_NotFound(t *testing.T) {
 	repo := NewMemoryPaymentRepository()
 	ctx := context.Background()
 
-	payment, _ := domain.NewPayment("booking-123", "user-456", 1000.00, "THB", domain.PaymentMethodCreditCard)
+	payment, _ := domain.NewPayment("tenant-123", "booking-123", "user-456", 1000.00, "THB", domain.PaymentMethodCreditCard)
 
 	err := repo.Update(ctx, payment)
 	if err == nil {
@@ -184,24 +183,23 @@ func TestMemoryPaymentRepository_Update_NotFound(t *testing.T) {
 	}
 }
 
-func TestMemoryPaymentRepository_GetByTransactionID(t *testing.T) {
+func TestMemoryPaymentRepository_GetByGatewayPaymentID(t *testing.T) {
 	repo := NewMemoryPaymentRepository()
 	ctx := context.Background()
 
-	payment, _ := domain.NewPayment("booking-123", "user-456", 1000.00, "THB", domain.PaymentMethodCreditCard)
+	payment, _ := domain.NewPayment("tenant-123", "booking-123", "user-456", 1000.00, "THB", domain.PaymentMethodCreditCard)
 	repo.Create(ctx, payment)
 
-	payment.MarkProcessing()
-	payment.Complete("txn-abc-123")
+	payment.Complete("pi_abc_123")
 	repo.Update(ctx, payment)
 
-	found, err := repo.GetByTransactionID(ctx, "txn-abc-123")
+	found, err := repo.GetByGatewayPaymentID(ctx, "pi_abc_123")
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}
 
-	if found.TransactionID != "txn-abc-123" {
-		t.Errorf("Expected transaction ID 'txn-abc-123', got '%s'", found.TransactionID)
+	if found.GatewayPaymentID != "pi_abc_123" {
+		t.Errorf("Expected gateway payment ID 'pi_abc_123', got '%s'", found.GatewayPaymentID)
 	}
 }
 
@@ -209,7 +207,7 @@ func TestMemoryPaymentRepository_Clear(t *testing.T) {
 	repo := NewMemoryPaymentRepository()
 	ctx := context.Background()
 
-	payment, _ := domain.NewPayment("booking-123", "user-456", 1000.00, "THB", domain.PaymentMethodCreditCard)
+	payment, _ := domain.NewPayment("tenant-123", "booking-123", "user-456", 1000.00, "THB", domain.PaymentMethodCreditCard)
 	repo.Create(ctx, payment)
 
 	if repo.Count() != 1 {

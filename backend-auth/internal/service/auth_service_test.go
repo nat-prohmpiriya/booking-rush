@@ -166,8 +166,8 @@ func TestAuthService_Register(t *testing.T) {
 		if resp.User.Name != req.Name {
 			t.Errorf("Register() User.Name = %v, want %v", resp.User.Name, req.Name)
 		}
-		if resp.User.Role != "user" {
-			t.Errorf("Register() User.Role = %v, want user", resp.User.Role)
+		if resp.User.Role != "customer" {
+			t.Errorf("Register() User.Role = %v, want customer", resp.User.Role)
 		}
 	})
 

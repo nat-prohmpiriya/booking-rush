@@ -34,7 +34,7 @@ func (m *mockPaymentService) CreatePayment(ctx context.Context, req *service.Cre
 		}
 	}
 
-	payment, err := domain.NewPayment(req.BookingID, req.UserID, req.Amount, req.Currency, req.Method)
+	payment, err := domain.NewPayment("tenant-123", req.BookingID, req.UserID, req.Amount, req.Currency, req.Method)
 	if err != nil {
 		return nil, err
 	}
@@ -48,11 +48,8 @@ func (m *mockPaymentService) ProcessPayment(ctx context.Context, paymentID strin
 	if !ok {
 		return nil, domain.ErrPaymentNotFound
 	}
-	if err := payment.MarkProcessing(); err != nil {
+	if err := payment.Complete("mock-pi-" + paymentID); err != nil {
 		return nil, domain.ErrInvalidPaymentStatus
-	}
-	if err := payment.Complete("mock-txn-" + paymentID); err != nil {
-		return nil, err
 	}
 	return payment, nil
 }
@@ -97,7 +94,7 @@ func (m *mockPaymentService) RefundPayment(ctx context.Context, paymentID string
 	if !ok {
 		return nil, domain.ErrPaymentNotFound
 	}
-	if err := payment.Refund(); err != nil {
+	if err := payment.Refund(payment.Amount, reason); err != nil {
 		return nil, domain.ErrInvalidPaymentStatus
 	}
 	return payment, nil
@@ -114,6 +111,14 @@ func (m *mockPaymentService) CancelPayment(ctx context.Context, paymentID string
 	return payment, nil
 }
 
+func (m *mockPaymentService) CompletePaymentFromWebhook(ctx context.Context, gatewayPaymentID, chargeID string) (*domain.Payment, error) {
+	return nil, nil
+}
+
+func (m *mockPaymentService) FailPaymentFromWebhook(ctx context.Context, gatewayPaymentID, errorCode, errorMessage string) (*domain.Payment, error) {
+	return nil, nil
+}
+
 // mockPaymentGateway implements gateway.PaymentGateway for testing
 type mockPaymentGateway struct{}
 
@@ -125,7 +130,7 @@ func (m *mockPaymentGateway) Charge(ctx context.Context, req *gateway.ChargeRequ
 	return &gateway.ChargeResponse{
 		Success:       true,
 		TransactionID: "mock-txn-" + req.PaymentID,
-		Status:        "completed",
+		Status:        "succeeded",
 	}, nil
 }
 
@@ -136,7 +141,7 @@ func (m *mockPaymentGateway) Refund(ctx context.Context, transactionID string, a
 func (m *mockPaymentGateway) GetTransaction(ctx context.Context, transactionID string) (*gateway.TransactionInfo, error) {
 	return &gateway.TransactionInfo{
 		TransactionID: transactionID,
-		Status:        "completed",
+		Status:        "succeeded",
 	}, nil
 }
 
@@ -224,6 +229,7 @@ func TestPaymentHandler_CreatePayment(t *testing.T) {
 	req, _ := http.NewRequest("POST", "/api/v1/payments", bytes.NewBuffer(body))
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("X-User-ID", "user-001")
+	req.Header.Set("X-Tenant-ID", "tenant-123")
 
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
@@ -278,6 +284,7 @@ func TestPaymentHandler_CreatePayment_Duplicate(t *testing.T) {
 	req1, _ := http.NewRequest("POST", "/api/v1/payments", bytes.NewBuffer(body))
 	req1.Header.Set("Content-Type", "application/json")
 	req1.Header.Set("X-User-ID", "user-001")
+	req1.Header.Set("X-Tenant-ID", "tenant-123")
 	w1 := httptest.NewRecorder()
 	router.ServeHTTP(w1, req1)
 
@@ -286,6 +293,7 @@ func TestPaymentHandler_CreatePayment_Duplicate(t *testing.T) {
 	req2, _ := http.NewRequest("POST", "/api/v1/payments", bytes.NewBuffer(body))
 	req2.Header.Set("Content-Type", "application/json")
 	req2.Header.Set("X-User-ID", "user-001")
+	req2.Header.Set("X-Tenant-ID", "tenant-123")
 	w2 := httptest.NewRecorder()
 	router.ServeHTTP(w2, req2)
 
@@ -307,6 +315,7 @@ func TestPaymentHandler_CreatePayment_ValidationError(t *testing.T) {
 	req, _ := http.NewRequest("POST", "/api/v1/payments", bytes.NewBuffer(body))
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("X-User-ID", "user-001")
+	req.Header.Set("X-Tenant-ID", "tenant-123")
 
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
@@ -321,7 +330,7 @@ func TestPaymentHandler_GetPayment(t *testing.T) {
 	router := setupTestRouter(svc)
 
 	// Create a payment first
-	payment, _ := domain.NewPayment("booking-get", "user-001", 500.00, "THB", domain.PaymentMethodDebitCard)
+	payment, _ := domain.NewPayment("tenant-123", "booking-get", "user-001", 500.00, "THB", domain.PaymentMethodDebitCard)
 	svc.payments[payment.ID] = payment
 
 	req, _ := http.NewRequest("GET", "/api/v1/payments/"+payment.ID, nil)
@@ -357,7 +366,7 @@ func TestPaymentHandler_GetPaymentByBookingID(t *testing.T) {
 	router := setupTestRouter(svc)
 
 	// Create a payment first
-	payment, _ := domain.NewPayment("booking-by-id", "user-001", 750.00, "THB", domain.PaymentMethodCreditCard)
+	payment, _ := domain.NewPayment("tenant-123", "booking-by-id", "user-001", 750.00, "THB", domain.PaymentMethodCreditCard)
 	svc.payments[payment.ID] = payment
 
 	req, _ := http.NewRequest("GET", "/api/v1/payments/booking/booking-by-id", nil)
@@ -375,7 +384,7 @@ func TestPaymentHandler_GetUserPayments(t *testing.T) {
 
 	// Create multiple payments for user
 	for i := 0; i < 3; i++ {
-		payment, _ := domain.NewPayment("booking-user-"+string(rune('A'+i)), "user-list", float64(100*(i+1)), "THB", domain.PaymentMethodCreditCard)
+		payment, _ := domain.NewPayment("tenant-123", "booking-user-"+string(rune('A'+i)), "user-list", float64(100*(i+1)), "THB", domain.PaymentMethodCreditCard)
 		svc.payments[payment.ID] = payment
 	}
 
@@ -399,7 +408,7 @@ func TestPaymentHandler_ProcessPayment(t *testing.T) {
 	router := setupTestRouter(svc)
 
 	// Create a pending payment
-	payment, _ := domain.NewPayment("booking-process", "user-001", 1000.00, "THB", domain.PaymentMethodCreditCard)
+	payment, _ := domain.NewPayment("tenant-123", "booking-process", "user-001", 1000.00, "THB", domain.PaymentMethodCreditCard)
 	svc.payments[payment.ID] = payment
 
 	req, _ := http.NewRequest("POST", "/api/v1/payments/"+payment.ID+"/process", nil)
@@ -411,8 +420,8 @@ func TestPaymentHandler_ProcessPayment(t *testing.T) {
 	}
 
 	// Verify status changed
-	if payment.Status != domain.PaymentStatusCompleted {
-		t.Errorf("Expected status 'completed', got '%s'", payment.Status)
+	if payment.Status != domain.PaymentStatusSucceeded {
+		t.Errorf("Expected status 'succeeded', got '%s'", payment.Status)
 	}
 }
 
@@ -434,9 +443,8 @@ func TestPaymentHandler_RefundPayment(t *testing.T) {
 	router := setupTestRouter(svc)
 
 	// Create and complete a payment
-	payment, _ := domain.NewPayment("booking-refund", "user-001", 2000.00, "THB", domain.PaymentMethodCreditCard)
-	payment.MarkProcessing()
-	payment.Complete("txn-refund-001")
+	payment, _ := domain.NewPayment("tenant-123", "booking-refund", "user-001", 2000.00, "THB", domain.PaymentMethodCreditCard)
+	payment.Complete("pi_refund_001")
 	svc.payments[payment.ID] = payment
 
 	reqBody := dto.RefundPaymentRequest{
@@ -464,7 +472,7 @@ func TestPaymentHandler_RefundPayment_InvalidStatus(t *testing.T) {
 	router := setupTestRouter(svc)
 
 	// Create a pending payment (cannot be refunded)
-	payment, _ := domain.NewPayment("booking-refund-pending", "user-001", 2000.00, "THB", domain.PaymentMethodCreditCard)
+	payment, _ := domain.NewPayment("tenant-123", "booking-refund-pending", "user-001", 2000.00, "THB", domain.PaymentMethodCreditCard)
 	svc.payments[payment.ID] = payment
 
 	req, _ := http.NewRequest("POST", "/api/v1/payments/"+payment.ID+"/refund", nil)
@@ -481,7 +489,7 @@ func TestPaymentHandler_CancelPayment(t *testing.T) {
 	router := setupTestRouter(svc)
 
 	// Create a pending payment
-	payment, _ := domain.NewPayment("booking-cancel", "user-001", 1500.00, "THB", domain.PaymentMethodCreditCard)
+	payment, _ := domain.NewPayment("tenant-123", "booking-cancel", "user-001", 1500.00, "THB", domain.PaymentMethodCreditCard)
 	svc.payments[payment.ID] = payment
 
 	req, _ := http.NewRequest("POST", "/api/v1/payments/"+payment.ID+"/cancel", nil)
@@ -503,9 +511,8 @@ func TestPaymentHandler_CancelPayment_InvalidStatus(t *testing.T) {
 	router := setupTestRouter(svc)
 
 	// Create a completed payment (cannot be cancelled)
-	payment, _ := domain.NewPayment("booking-cancel-completed", "user-001", 1500.00, "THB", domain.PaymentMethodCreditCard)
-	payment.MarkProcessing()
-	payment.Complete("txn-cancel-001")
+	payment, _ := domain.NewPayment("tenant-123", "booking-cancel-completed", "user-001", 1500.00, "THB", domain.PaymentMethodCreditCard)
+	payment.Complete("pi_cancel_001")
 	svc.payments[payment.ID] = payment
 
 	req, _ := http.NewRequest("POST", "/api/v1/payments/"+payment.ID+"/cancel", nil)
@@ -532,6 +539,7 @@ func TestPaymentHandler_CreatePayment_WithAutoProcess(t *testing.T) {
 	req, _ := http.NewRequest("POST", "/api/v1/payments?auto_process=true", bytes.NewBuffer(body))
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("X-User-ID", "user-001")
+	req.Header.Set("X-Tenant-ID", "tenant-123")
 
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
@@ -553,7 +561,7 @@ func TestPaymentHandler_CreatePayment_WithAutoProcess(t *testing.T) {
 		t.Fatal("Expected data to be a map")
 	}
 	status, ok := dataMap["status"].(string)
-	if !ok || status != string(domain.PaymentStatusCompleted) {
-		t.Errorf("Expected status 'completed', got '%s'", status)
+	if !ok || status != string(domain.PaymentStatusSucceeded) {
+		t.Errorf("Expected status 'succeeded', got '%s'", status)
 	}
 }

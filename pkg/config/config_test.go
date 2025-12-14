@@ -10,7 +10,10 @@ func TestLoad_WithDefaults(t *testing.T) {
 	envVars := []string{
 		"APP_NAME", "APP_ENVIRONMENT", "APP_DEBUG",
 		"SERVER_HOST", "SERVER_PORT",
-		"DATABASE_HOST", "DATABASE_PORT", "DATABASE_USER", "DATABASE_PASSWORD", "DATABASE_DBNAME",
+		"AUTH_DATABASE_HOST", "AUTH_DATABASE_PORT", "AUTH_DATABASE_USER", "AUTH_DATABASE_PASSWORD", "AUTH_DATABASE_DBNAME",
+		"TICKET_DATABASE_HOST", "TICKET_DATABASE_PORT",
+		"BOOKING_DATABASE_HOST", "BOOKING_DATABASE_PORT",
+		"PAYMENT_DATABASE_HOST", "PAYMENT_DATABASE_PORT",
 		"REDIS_HOST", "REDIS_PORT",
 		"JWT_SECRET",
 	}
@@ -36,8 +39,20 @@ func TestLoad_WithDefaults(t *testing.T) {
 		t.Errorf("Server.Port = %d, want %d", cfg.Server.Port, 8080)
 	}
 
-	if cfg.Database.Port != 5432 {
-		t.Errorf("Database.Port = %d, want %d", cfg.Database.Port, 5432)
+	if cfg.AuthDatabase.Port != 5432 {
+		t.Errorf("AuthDatabase.Port = %d, want %d", cfg.AuthDatabase.Port, 5432)
+	}
+
+	if cfg.TicketDatabase.Port != 5432 {
+		t.Errorf("TicketDatabase.Port = %d, want %d", cfg.TicketDatabase.Port, 5432)
+	}
+
+	if cfg.BookingDatabase.Port != 5432 {
+		t.Errorf("BookingDatabase.Port = %d, want %d", cfg.BookingDatabase.Port, 5432)
+	}
+
+	if cfg.PaymentDatabase.Port != 5432 {
+		t.Errorf("PaymentDatabase.Port = %d, want %d", cfg.PaymentDatabase.Port, 5432)
 	}
 
 	if cfg.Redis.Port != 6379 {
@@ -49,11 +64,13 @@ func TestLoad_WithEnvOverride(t *testing.T) {
 	// Set environment variables
 	os.Setenv("APP_NAME", "test-app")
 	os.Setenv("SERVER_PORT", "9090")
-	os.Setenv("DATABASE_HOST", "db.example.com")
+	os.Setenv("AUTH_DATABASE_HOST", "auth-db.example.com")
+	os.Setenv("TICKET_DATABASE_HOST", "ticket-db.example.com")
 	defer func() {
 		os.Unsetenv("APP_NAME")
 		os.Unsetenv("SERVER_PORT")
-		os.Unsetenv("DATABASE_HOST")
+		os.Unsetenv("AUTH_DATABASE_HOST")
+		os.Unsetenv("TICKET_DATABASE_HOST")
 	}()
 
 	cfg, err := Load()
@@ -69,8 +86,12 @@ func TestLoad_WithEnvOverride(t *testing.T) {
 		t.Errorf("Server.Port = %d, want %d", cfg.Server.Port, 9090)
 	}
 
-	if cfg.Database.Host != "db.example.com" {
-		t.Errorf("Database.Host = %q, want %q", cfg.Database.Host, "db.example.com")
+	if cfg.AuthDatabase.Host != "auth-db.example.com" {
+		t.Errorf("AuthDatabase.Host = %q, want %q", cfg.AuthDatabase.Host, "auth-db.example.com")
+	}
+
+	if cfg.TicketDatabase.Host != "ticket-db.example.com" {
+		t.Errorf("TicketDatabase.Host = %q, want %q", cfg.TicketDatabase.Host, "ticket-db.example.com")
 	}
 }
 
@@ -111,70 +132,54 @@ func TestConfig_Validate(t *testing.T) {
 		{
 			name: "valid config",
 			cfg: Config{
-				App:      AppConfig{Name: "test", Environment: "development"},
-				Server:   ServerConfig{Port: 8080},
-				Database: DatabaseConfig{Host: "localhost", DBName: "test"},
-				JWT:      JWTConfig{Secret: "secret"},
+				App:    AppConfig{Name: "test", Environment: "development"},
+				Server: ServerConfig{Port: 8080},
+				JWT:    JWTConfig{Secret: "secret"},
 			},
 			wantErr: false,
 		},
 		{
 			name: "missing app name",
 			cfg: Config{
-				App:      AppConfig{Name: "", Environment: "development"},
-				Server:   ServerConfig{Port: 8080},
-				Database: DatabaseConfig{Host: "localhost", DBName: "test"},
-				JWT:      JWTConfig{Secret: "secret"},
+				App:    AppConfig{Name: "", Environment: "development"},
+				Server: ServerConfig{Port: 8080},
+				JWT:    JWTConfig{Secret: "secret"},
 			},
 			wantErr: true,
 		},
 		{
 			name: "invalid port",
 			cfg: Config{
-				App:      AppConfig{Name: "test", Environment: "development"},
-				Server:   ServerConfig{Port: -1},
-				Database: DatabaseConfig{Host: "localhost", DBName: "test"},
-				JWT:      JWTConfig{Secret: "secret"},
+				App:    AppConfig{Name: "test", Environment: "development"},
+				Server: ServerConfig{Port: -1},
+				JWT:    JWTConfig{Secret: "secret"},
 			},
 			wantErr: true,
 		},
 		{
 			name: "port too high",
 			cfg: Config{
-				App:      AppConfig{Name: "test", Environment: "development"},
-				Server:   ServerConfig{Port: 70000},
-				Database: DatabaseConfig{Host: "localhost", DBName: "test"},
-				JWT:      JWTConfig{Secret: "secret"},
-			},
-			wantErr: true,
-		},
-		{
-			name: "missing database host",
-			cfg: Config{
-				App:      AppConfig{Name: "test", Environment: "development"},
-				Server:   ServerConfig{Port: 8080},
-				Database: DatabaseConfig{Host: "", DBName: "test"},
-				JWT:      JWTConfig{Secret: "secret"},
+				App:    AppConfig{Name: "test", Environment: "development"},
+				Server: ServerConfig{Port: 70000},
+				JWT:    JWTConfig{Secret: "secret"},
 			},
 			wantErr: true,
 		},
 		{
 			name: "missing JWT secret",
 			cfg: Config{
-				App:      AppConfig{Name: "test", Environment: "development"},
-				Server:   ServerConfig{Port: 8080},
-				Database: DatabaseConfig{Host: "localhost", DBName: "test"},
-				JWT:      JWTConfig{Secret: ""},
+				App:    AppConfig{Name: "test", Environment: "development"},
+				Server: ServerConfig{Port: 8080},
+				JWT:    JWTConfig{Secret: ""},
 			},
 			wantErr: true,
 		},
 		{
 			name: "default JWT secret in production",
 			cfg: Config{
-				App:      AppConfig{Name: "test", Environment: "production"},
-				Server:   ServerConfig{Port: 8080},
-				Database: DatabaseConfig{Host: "localhost", DBName: "test"},
-				JWT:      JWTConfig{Secret: "your-secret-key-change-in-production"},
+				App:    AppConfig{Name: "test", Environment: "production"},
+				Server: ServerConfig{Port: 8080},
+				JWT:    JWTConfig{Secret: "your-secret-key-change-in-production"},
 			},
 			wantErr: true,
 		},
@@ -185,6 +190,148 @@ func TestConfig_Validate(t *testing.T) {
 			err := tt.cfg.Validate()
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Validate() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestConfig_ValidateAuthDatabase(t *testing.T) {
+	tests := []struct {
+		name    string
+		cfg     Config
+		wantErr bool
+	}{
+		{
+			name: "valid auth database",
+			cfg: Config{
+				AuthDatabase: DatabaseConfig{Host: "localhost", DBName: "auth_db"},
+			},
+			wantErr: false,
+		},
+		{
+			name: "missing auth database host",
+			cfg: Config{
+				AuthDatabase: DatabaseConfig{Host: "", DBName: "auth_db"},
+			},
+			wantErr: true,
+		},
+		{
+			name: "missing auth database name",
+			cfg: Config{
+				AuthDatabase: DatabaseConfig{Host: "localhost", DBName: ""},
+			},
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := tt.cfg.ValidateAuthDatabase()
+			if (err != nil) != tt.wantErr {
+				t.Errorf("ValidateAuthDatabase() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestConfig_ValidateTicketDatabase(t *testing.T) {
+	tests := []struct {
+		name    string
+		cfg     Config
+		wantErr bool
+	}{
+		{
+			name: "valid ticket database",
+			cfg: Config{
+				TicketDatabase: DatabaseConfig{Host: "localhost", DBName: "ticket_db"},
+			},
+			wantErr: false,
+		},
+		{
+			name: "missing ticket database host",
+			cfg: Config{
+				TicketDatabase: DatabaseConfig{Host: "", DBName: "ticket_db"},
+			},
+			wantErr: true,
+		},
+		{
+			name: "missing ticket database name",
+			cfg: Config{
+				TicketDatabase: DatabaseConfig{Host: "localhost", DBName: ""},
+			},
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := tt.cfg.ValidateTicketDatabase()
+			if (err != nil) != tt.wantErr {
+				t.Errorf("ValidateTicketDatabase() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestConfig_ValidateBookingDatabase(t *testing.T) {
+	tests := []struct {
+		name    string
+		cfg     Config
+		wantErr bool
+	}{
+		{
+			name: "valid booking database",
+			cfg: Config{
+				BookingDatabase: DatabaseConfig{Host: "localhost", DBName: "booking_db"},
+			},
+			wantErr: false,
+		},
+		{
+			name: "missing booking database host",
+			cfg: Config{
+				BookingDatabase: DatabaseConfig{Host: "", DBName: "booking_db"},
+			},
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := tt.cfg.ValidateBookingDatabase()
+			if (err != nil) != tt.wantErr {
+				t.Errorf("ValidateBookingDatabase() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestConfig_ValidatePaymentDatabase(t *testing.T) {
+	tests := []struct {
+		name    string
+		cfg     Config
+		wantErr bool
+	}{
+		{
+			name: "valid payment database",
+			cfg: Config{
+				PaymentDatabase: DatabaseConfig{Host: "localhost", DBName: "payment_db"},
+			},
+			wantErr: false,
+		},
+		{
+			name: "missing payment database host",
+			cfg: Config{
+				PaymentDatabase: DatabaseConfig{Host: "", DBName: "payment_db"},
+			},
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := tt.cfg.ValidatePaymentDatabase()
+			if (err != nil) != tt.wantErr {
+				t.Errorf("ValidatePaymentDatabase() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
 	}

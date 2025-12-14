@@ -22,7 +22,7 @@ func (m *mockPaymentService) CreatePayment(ctx context.Context, req *service.Cre
 	if m.createPaymentFunc != nil {
 		return m.createPaymentFunc(ctx, req)
 	}
-	payment, _ := domain.NewPayment(req.BookingID, req.UserID, req.Amount, req.Currency, req.Method)
+	payment, _ := domain.NewPayment("tenant-123", req.BookingID, req.UserID, req.Amount, req.Currency, req.Method)
 	return payment, nil
 }
 
@@ -30,9 +30,8 @@ func (m *mockPaymentService) ProcessPayment(ctx context.Context, paymentID strin
 	if m.processPaymentFunc != nil {
 		return m.processPaymentFunc(ctx, paymentID)
 	}
-	payment, _ := domain.NewPayment("booking-123", "user-123", 100, "THB", domain.PaymentMethodCreditCard)
-	payment.MarkProcessing()
-	payment.Complete("txn-123")
+	payment, _ := domain.NewPayment("tenant-123", "booking-123", "user-123", 100, "THB", domain.PaymentMethodCreditCard)
+	payment.Complete("pi_123")
 	return payment, nil
 }
 
@@ -53,6 +52,10 @@ func (m *mockPaymentService) RefundPayment(ctx context.Context, paymentID string
 }
 
 func (m *mockPaymentService) CancelPayment(ctx context.Context, paymentID string) (*domain.Payment, error) {
+	return nil, nil
+}
+
+func (m *mockPaymentService) CompletePaymentFromWebhook(ctx context.Context, gatewayPaymentID, chargeID string) (*domain.Payment, error) {
 	return nil, nil
 }
 
@@ -109,15 +112,15 @@ func TestPaymentEventMarshal(t *testing.T) {
 		OccurredAt: time.Now(),
 		Version:    1,
 		PaymentData: &PaymentEventData{
-			PaymentID:     "pay-123",
-			BookingID:     "booking-456",
-			UserID:        "user-789",
-			Amount:        1000.00,
-			Currency:      "THB",
-			Status:        "completed",
-			Method:        "credit_card",
-			TransactionID: "txn-abc",
-			ProcessedAt:   time.Now(),
+			PaymentID:        "pay-123",
+			BookingID:        "booking-456",
+			UserID:           "user-789",
+			Amount:           1000.00,
+			Currency:         "THB",
+			Status:           "succeeded",
+			Method:           "credit_card",
+			GatewayPaymentID: "pi_abc",
+			ProcessedAt:      time.Now(),
 		},
 	}
 
@@ -213,6 +216,7 @@ func TestPaymentServiceIntegration(t *testing.T) {
 
 	// Create payment
 	req := &service.CreatePaymentRequest{
+		TenantID:  "tenant-123",
 		BookingID: "booking-123",
 		UserID:    "user-456",
 		Amount:    1000.00,
@@ -235,12 +239,12 @@ func TestPaymentServiceIntegration(t *testing.T) {
 		t.Fatalf("Failed to process payment: %v", err)
 	}
 
-	if processedPayment.Status != domain.PaymentStatusCompleted {
-		t.Errorf("Expected status completed, got %s", processedPayment.Status)
+	if processedPayment.Status != domain.PaymentStatusSucceeded {
+		t.Errorf("Expected status succeeded, got %s", processedPayment.Status)
 	}
 
-	if processedPayment.TransactionID == "" {
-		t.Error("Expected transaction ID to be set")
+	if processedPayment.GatewayPaymentID == "" {
+		t.Error("Expected gateway payment ID to be set")
 	}
 }
 
@@ -262,6 +266,7 @@ func TestPaymentServiceFailure(t *testing.T) {
 
 	// Create payment
 	req := &service.CreatePaymentRequest{
+		TenantID:  "tenant-123",
 		BookingID: "booking-123",
 		UserID:    "user-456",
 		Amount:    1000.00,
@@ -284,7 +289,7 @@ func TestPaymentServiceFailure(t *testing.T) {
 		t.Errorf("Expected status failed, got %s", processedPayment.Status)
 	}
 
-	if processedPayment.FailureReason == "" {
-		t.Error("Expected failure reason to be set")
+	if processedPayment.ErrorMessage == "" {
+		t.Error("Expected error message to be set")
 	}
 }
