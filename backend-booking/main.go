@@ -36,11 +36,14 @@ func main() {
 		log.Fatalf("Failed to load config: %v", err)
 	}
 
-	// Initialize logger
+	// Initialize logger with OTLP export support
 	logCfg := &logger.Config{
-		Level:       cfg.App.Environment,
-		ServiceName: "booking-service",
-		Development: cfg.IsDevelopment(),
+		Level:        cfg.App.Environment,
+		ServiceName:  "booking-service",
+		Development:  cfg.IsDevelopment(),
+		OTLPEnabled:  cfg.OTel.Enabled && cfg.OTel.LogExportEnabled,
+		OTLPEndpoint: cfg.OTel.CollectorAddr,
+		OTLPInsecure: true,
 	}
 	if err := logger.Init(logCfg); err != nil {
 		log.Fatalf("Failed to initialize logger: %v", err)

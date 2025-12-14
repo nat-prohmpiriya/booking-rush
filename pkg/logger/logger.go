@@ -4,7 +4,9 @@ import (
 	"context"
 	"os"
 	"sync"
+	"time"
 
+	"go.opentelemetry.io/otel/trace"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )
@@ -15,6 +17,8 @@ type ContextKey string
 const (
 	// TraceIDKey is the context key for trace ID
 	TraceIDKey ContextKey = "trace_id"
+	// SpanIDKey is the context key for span ID
+	SpanIDKey ContextKey = "span_id"
 	// ServiceKey is the context key for service name
 	ServiceKey ContextKey = "service"
 	// RequestIDKey is the context key for request ID
@@ -38,15 +42,28 @@ type Config struct {
 	ServiceName string
 	Development bool   // if true, uses console encoder; if false, uses JSON encoder
 	OutputPath  string // stdout, stderr, or file path
+	// OTLP configuration for exporting logs to OTel Collector
+	OTLPEnabled   bool
+	OTLPEndpoint  string        // e.g., "otel-collector:4317"
+	OTLPInsecure  bool          // Use insecure connection (no TLS)
+	OTLPTimeout   time.Duration // Timeout for OTLP export
+	BatchSize     int           // Batch size for log export
+	BatchInterval time.Duration // Interval for batch export
 }
 
 // DefaultConfig returns default logger configuration
 func DefaultConfig() *Config {
 	return &Config{
-		Level:       "info",
-		ServiceName: "booking-rush",
-		Development: false,
-		OutputPath:  "stdout",
+		Level:         "info",
+		ServiceName:   "booking-rush",
+		Development:   false,
+		OutputPath:    "stdout",
+		OTLPEnabled:   false,
+		OTLPEndpoint:  "localhost:4317",
+		OTLPInsecure:  true,
+		OTLPTimeout:   5 * time.Second,
+		BatchSize:     100,
+		BatchInterval: 1 * time.Second,
 	}
 }
 
@@ -74,7 +91,7 @@ func New(cfg *Config) (*Logger, error) {
 
 	level := parseLevel(cfg.Level)
 
-	// Configure encoder
+	// Configure encoder for JSON output (structured logging)
 	encoderConfig := zapcore.EncoderConfig{
 		TimeKey:        "timestamp",
 		LevelKey:       "level",
@@ -113,7 +130,21 @@ func New(cfg *Config) (*Logger, error) {
 		output = zapcore.AddSync(file)
 	}
 
-	core := zapcore.NewCore(encoder, output, level)
+	// Create cores - always include stdout/file output
+	cores := []zapcore.Core{
+		zapcore.NewCore(encoder, output, level),
+	}
+
+	// Add OTLP core if enabled
+	if cfg.OTLPEnabled && cfg.OTLPEndpoint != "" {
+		otlpCore := NewOTLPCore(cfg, level)
+		if otlpCore != nil {
+			cores = append(cores, otlpCore)
+		}
+	}
+
+	// Combine cores using Tee
+	core := zapcore.NewTee(cores...)
 
 	// Add caller skip for wrapper methods
 	zapLogger := zap.New(core,
@@ -149,16 +180,32 @@ func Get() *Logger {
 	return globalLogger
 }
 
-// WithContext returns a logger with context fields (trace_id, request_id)
+// WithContext returns a logger with context fields (trace_id, span_id, request_id)
+// It extracts trace_id from OTel span context automatically
 func (l *Logger) WithContext(ctx context.Context) *Logger {
 	if ctx == nil {
 		return l
 	}
 
-	fields := make([]zap.Field, 0, 2)
+	fields := make([]zap.Field, 0, 3)
 
-	if traceID, ok := ctx.Value(TraceIDKey).(string); ok && traceID != "" {
-		fields = append(fields, zap.String("trace_id", traceID))
+	// Extract trace_id and span_id from OTel context (priority)
+	span := trace.SpanFromContext(ctx)
+	if span.SpanContext().IsValid() {
+		if span.SpanContext().HasTraceID() {
+			fields = append(fields, zap.String("trace_id", span.SpanContext().TraceID().String()))
+		}
+		if span.SpanContext().HasSpanID() {
+			fields = append(fields, zap.String("span_id", span.SpanContext().SpanID().String()))
+		}
+	} else {
+		// Fallback to context value if OTel span not available
+		if traceID, ok := ctx.Value(TraceIDKey).(string); ok && traceID != "" {
+			fields = append(fields, zap.String("trace_id", traceID))
+		}
+		if spanID, ok := ctx.Value(SpanIDKey).(string); ok && spanID != "" {
+			fields = append(fields, zap.String("span_id", spanID))
+		}
 	}
 
 	if requestID, ok := ctx.Value(RequestIDKey).(string); ok && requestID != "" {

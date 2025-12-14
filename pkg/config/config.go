@@ -115,6 +115,8 @@ type OTelConfig struct {
 	ServiceName   string  `mapstructure:"service_name"`
 	CollectorAddr string  `mapstructure:"collector_addr"`
 	SampleRatio   float64 `mapstructure:"sample_ratio"`
+	// Log export settings
+	LogExportEnabled bool `mapstructure:"log_export_enabled"` // Enable OTLP log export (in addition to stdout)
 }
 
 // Load loads configuration from environment variables and .env file
@@ -279,6 +281,7 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("OTEL_SERVICE_NAME", "booking-rush")
 	v.SetDefault("OTEL_COLLECTOR_ADDR", "localhost:4317")
 	v.SetDefault("OTEL_SAMPLE_RATIO", 1.0)
+	v.SetDefault("OTEL_LOG_EXPORT_ENABLED", false) // Disabled by default, enable to send logs to Loki via OTel
 }
 
 func bindConfig(v *viper.Viper, cfg *Config) error {
@@ -379,6 +382,7 @@ func bindConfig(v *viper.Viper, cfg *Config) error {
 	cfg.OTel.ServiceName = v.GetString("OTEL_SERVICE_NAME")
 	cfg.OTel.CollectorAddr = v.GetString("OTEL_COLLECTOR_ADDR")
 	cfg.OTel.SampleRatio = v.GetFloat64("OTEL_SAMPLE_RATIO")
+	cfg.OTel.LogExportEnabled = v.GetBool("OTEL_LOG_EXPORT_ENABLED")
 
 	return nil
 }
