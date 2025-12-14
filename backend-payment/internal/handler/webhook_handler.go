@@ -1,13 +1,17 @@
 package handler
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/prohmpiriya/booking-rush-10k-rps/backend-payment/internal/dto"
 	"github.com/prohmpiriya/booking-rush-10k-rps/backend-payment/internal/service"
+	"github.com/prohmpiriya/booking-rush-10k-rps/pkg/kafka"
 	"github.com/prohmpiriya/booking-rush-10k-rps/pkg/logger"
 	"github.com/stripe/stripe-go/v82"
 	"github.com/stripe/stripe-go/v82/webhook"
@@ -17,13 +21,15 @@ import (
 type WebhookHandler struct {
 	paymentService service.PaymentService
 	webhookSecret  string
+	kafkaProducer  *kafka.Producer
 }
 
 // NewWebhookHandler creates a new WebhookHandler
-func NewWebhookHandler(paymentService service.PaymentService, webhookSecret string) *WebhookHandler {
+func NewWebhookHandler(paymentService service.PaymentService, webhookSecret string, kafkaProducer *kafka.Producer) *WebhookHandler {
 	return &WebhookHandler{
 		paymentService: paymentService,
 		webhookSecret:  webhookSecret,
+		kafkaProducer:  kafkaProducer,
 	}
 }
 
@@ -140,7 +146,10 @@ func (h *WebhookHandler) handlePaymentIntentFailed(c *gin.Context, event stripe.
 		}
 	}
 
-	// TODO: Trigger seat release via Kafka event to booking-service
+	// Trigger seat release via Kafka event to booking-service
+	if bookingID != "" {
+		h.publishSeatReleaseEvent(c.Request.Context(), bookingID, paymentID, dto.SeatReleaseReasonPaymentFailed, failureCode, failureMessage)
+	}
 
 	c.JSON(http.StatusOK, gin.H{"received": true})
 }
@@ -169,7 +178,10 @@ func (h *WebhookHandler) handlePaymentIntentCanceled(c *gin.Context, event strip
 		}
 	}
 
-	// TODO: Trigger seat release via Kafka event to booking-service
+	// Trigger seat release via Kafka event to booking-service
+	if bookingID != "" {
+		h.publishSeatReleaseEvent(c.Request.Context(), bookingID, paymentID, dto.SeatReleaseReasonPaymentCanceled, "PAYMENT_CANCELED", "Payment was canceled")
+	}
 
 	c.JSON(http.StatusOK, gin.H{"received": true})
 }
@@ -199,7 +211,37 @@ func (h *WebhookHandler) handleChargeRefunded(c *gin.Context, event stripe.Event
 		}
 	}
 
-	// TODO: Trigger seat release via Kafka event to booking-service
+	// Trigger seat release via Kafka event to booking-service
+	if bookingID != "" {
+		h.publishSeatReleaseEvent(c.Request.Context(), bookingID, paymentID, dto.SeatReleaseReasonPaymentRefunded, "PAYMENT_REFUNDED", "Payment was refunded")
+	}
 
 	c.JSON(http.StatusOK, gin.H{"received": true})
+}
+
+// publishSeatReleaseEvent publishes a seat release event to Kafka
+func (h *WebhookHandler) publishSeatReleaseEvent(ctx context.Context, bookingID, paymentID string, reason dto.SeatReleaseReason, failureCode, message string) {
+	log := logger.Get()
+
+	if h.kafkaProducer == nil {
+		log.Warn("Kafka producer not configured, skipping seat release event")
+		return
+	}
+
+	event := &dto.SeatReleaseEvent{
+		EventType:   "seat_release",
+		BookingID:   bookingID,
+		PaymentID:   paymentID,
+		Reason:      reason,
+		FailureCode: failureCode,
+		Message:     message,
+		Timestamp:   time.Now().UTC(),
+	}
+
+	if err := h.kafkaProducer.ProduceJSON(ctx, dto.TopicSeatRelease, event.Key(), event, nil); err != nil {
+		log.Error(fmt.Sprintf("Failed to publish seat release event: %v", err))
+		return
+	}
+
+	log.Info(fmt.Sprintf("Published seat release event: booking_id=%s, reason=%s", bookingID, reason))
 }
