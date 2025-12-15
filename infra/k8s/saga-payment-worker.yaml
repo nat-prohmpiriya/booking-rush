@@ -1,0 +1,40 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: saga-payment-worker
+  namespace: booking-rush
+  labels:
+    app: saga-payment-worker
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: saga-payment-worker
+  template:
+    metadata:
+      labels:
+        app: saga-payment-worker
+    spec:
+      imagePullSecrets:
+        - name: ghcr-secret
+      containers:
+        - name: saga-payment-worker
+          image: ghcr.io/nat-prohmpiriya/booking-rush/saga-payment-worker:latest
+          imagePullPolicy: Always
+          env:
+            - name: SERVICE_NAME
+              value: "saga-payment-worker"
+            - name: PAYMENT_GATEWAY
+              value: "stripe"
+          envFrom:
+            - configMapRef:
+                name: booking-rush-config
+            - secretRef:
+                name: booking-rush-secrets
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi

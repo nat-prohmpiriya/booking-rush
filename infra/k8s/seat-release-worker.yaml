@@ -1,0 +1,38 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: seat-release-worker
+  namespace: booking-rush
+  labels:
+    app: seat-release-worker
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: seat-release-worker
+  template:
+    metadata:
+      labels:
+        app: seat-release-worker
+    spec:
+      imagePullSecrets:
+        - name: ghcr-secret
+      containers:
+        - name: seat-release-worker
+          image: ghcr.io/nat-prohmpiriya/booking-rush/seat-release-worker:latest
+          imagePullPolicy: Always
+          env:
+            - name: SERVICE_NAME
+              value: "seat-release-worker"
+          envFrom:
+            - configMapRef:
+                name: booking-rush-config
+            - secretRef:
+                name: booking-rush-secrets
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi

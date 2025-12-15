@@ -115,6 +115,10 @@ deploy_all_services() {
     deploy_service "frontend-web"
     deploy_service "inventory-worker"
     deploy_service "queue-release-worker"
+    deploy_service "saga-orchestrator"
+    deploy_service "saga-step-worker"
+    deploy_service "saga-payment-worker"
+    deploy_service "seat-release-worker"
 
     print_success "All services deployed"
 }
@@ -152,6 +156,12 @@ wait_for_pods() {
     ssh_cmd "kubectl rollout status deployment/booking-service -n $NAMESPACE --timeout=120s" || true
     ssh_cmd "kubectl rollout status deployment/payment-service -n $NAMESPACE --timeout=120s" || true
     ssh_cmd "kubectl rollout status deployment/frontend-web -n $NAMESPACE --timeout=120s" || true
+    ssh_cmd "kubectl rollout status deployment/inventory-worker -n $NAMESPACE --timeout=120s" || true
+    ssh_cmd "kubectl rollout status deployment/queue-release-worker -n $NAMESPACE --timeout=120s" || true
+    ssh_cmd "kubectl rollout status deployment/saga-orchestrator -n $NAMESPACE --timeout=120s" || true
+    ssh_cmd "kubectl rollout status deployment/saga-step-worker -n $NAMESPACE --timeout=120s" || true
+    ssh_cmd "kubectl rollout status deployment/saga-payment-worker -n $NAMESPACE --timeout=120s" || true
+    ssh_cmd "kubectl rollout status deployment/seat-release-worker -n $NAMESPACE --timeout=120s" || true
 
     print_success "All pods ready"
 }
@@ -166,15 +176,29 @@ show_menu() {
     echo "Target: $SSH_USER@$HOST"
     echo "Namespace: $NAMESPACE"
     echo ""
+    echo "=== Main ==="
     echo "1) Deploy ALL"
-    echo "2) Deploy api-gateway"
-    echo "3) Deploy auth-service"
-    echo "4) Deploy ticket-service"
-    echo "5) Deploy booking-service"
-    echo "6) Deploy payment-service"
-    echo "7) Deploy frontend-web"
-    echo "8) Deploy ingress"
-    echo "9) Show status"
+    echo "2) Show status"
+    echo ""
+    echo "=== Services ==="
+    echo "10) Deploy api-gateway"
+    echo "11) Deploy auth-service"
+    echo "12) Deploy ticket-service"
+    echo "13) Deploy booking-service"
+    echo "14) Deploy payment-service"
+    echo "15) Deploy frontend-web"
+    echo ""
+    echo "=== Workers ==="
+    echo "20) Deploy inventory-worker"
+    echo "21) Deploy queue-release-worker"
+    echo "22) Deploy saga-orchestrator"
+    echo "23) Deploy saga-step-worker"
+    echo "24) Deploy saga-payment-worker"
+    echo "25) Deploy seat-release-worker"
+    echo ""
+    echo "=== Infra ==="
+    echo "30) Deploy ingress"
+    echo ""
     echo "0) Exit"
     echo ""
     read -p "Select an option: " OPTION
@@ -189,14 +213,20 @@ show_menu() {
             wait_for_pods
             show_status
             ;;
-        2) deploy_service "api-gateway" ;;
-        3) deploy_service "auth-service" ;;
-        4) deploy_service "ticket-service" ;;
-        5) deploy_service "booking-service" ;;
-        6) deploy_service "payment-service" ;;
-        7) deploy_service "frontend-web" ;;
-        8) deploy_ingress ;;
-        9) show_status ;;
+        2) show_status ;;
+        10) deploy_service "api-gateway" ;;
+        11) deploy_service "auth-service" ;;
+        12) deploy_service "ticket-service" ;;
+        13) deploy_service "booking-service" ;;
+        14) deploy_service "payment-service" ;;
+        15) deploy_service "frontend-web" ;;
+        20) deploy_service "inventory-worker" ;;
+        21) deploy_service "queue-release-worker" ;;
+        22) deploy_service "saga-orchestrator" ;;
+        23) deploy_service "saga-step-worker" ;;
+        24) deploy_service "saga-payment-worker" ;;
+        25) deploy_service "seat-release-worker" ;;
+        30) deploy_ingress ;;
         0) echo "Exiting..."; exit 0 ;;
         *) print_error "Invalid option"; show_menu ;;
     esac

@@ -1,0 +1,38 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: saga-orchestrator
+  namespace: booking-rush
+  labels:
+    app: saga-orchestrator
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: saga-orchestrator
+  template:
+    metadata:
+      labels:
+        app: saga-orchestrator
+    spec:
+      imagePullSecrets:
+        - name: ghcr-secret
+      containers:
+        - name: saga-orchestrator
+          image: ghcr.io/nat-prohmpiriya/booking-rush/saga-orchestrator:latest
+          imagePullPolicy: Always
+          env:
+            - name: SERVICE_NAME
+              value: "saga-orchestrator"
+          envFrom:
+            - configMapRef:
+                name: booking-rush-config
+            - secretRef:
+                name: booking-rush-secrets
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
