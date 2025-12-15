@@ -1,2 +1,4 @@
-- [] datbase ยังไม่แยกตามหลัก micro service
-- [] deployment every service 
+- [] deploy on k3s vps
+- [] test k6
+- [] write documentation & diagrams
+- [] review code and presentation
