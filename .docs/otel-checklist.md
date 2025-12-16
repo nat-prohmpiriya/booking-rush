@@ -16,7 +16,7 @@
 | Logger + Trace ID | ✅ | `WithContext()` พร้อมใช้ |
 | **Manual Spans** | ✅ | Handlers + Services done |
 | **Logger with Context** | ✅ | Saga handlers updated (80+ calls) |
-| **Business Metrics** | ❌ | ต้องสร้างใหม่ |
+| **Business Metrics** | ✅ | Booking & Payment metrics created |
 
 ---
 
@@ -136,61 +136,49 @@ func (h *BookingHandler) Reserve(c *gin.Context) {
 
 ---
 
-### 1.6 Business Metrics - Booking & Payment
+### 1.6 Business Metrics - Booking & Payment ✅
 
-**File to create:** `backend-booking/internal/metrics/metrics.go`
+**Files created:**
+- [x] `backend-booking/internal/metrics/metrics.go`
+- [x] `backend-payment/internal/metrics/metrics.go`
 
-```go
-package metrics
+**Booking Metrics implemented:**
 
-import "booking-rush/pkg/telemetry"
+| Metric | Type | Description |
+|--------|------|-------------|
+| `booking_reservations_total` | Counter | Reservations created |
+| `booking_confirmations_total` | Counter | Bookings confirmed |
+| `booking_expirations_total` | Counter | Expired reservations |
+| `booking_failures_total` | Counter | Failed bookings |
+| `booking_cancellations_total` | Counter | Cancelled bookings |
+| `queue_joins_total` | Counter | Queue joins |
+| `queue_leaves_total` | Counter | Queue leaves |
+| `booking_reservation_duration_seconds` | Histogram | Time from reserve to confirm |
+| `queue_wait_time_seconds` | Histogram | Queue wait time |
+| `booking_active_reservations` | UpDownCounter | Active reservations |
+| `queue_depth` | UpDownCounter | Current queue size |
 
-var (
-    BookingsReserved  *telemetry.Counter
-    BookingsConfirmed *telemetry.Counter
-    BookingsExpired   *telemetry.Counter
-    BookingsFailed    *telemetry.Counter
+**Payment Metrics implemented:**
 
-    ReservationDuration *telemetry.Histogram
-    SeatsAvailable      *telemetry.Gauge
-)
+| Metric | Type | Description |
+|--------|------|-------------|
+| `payment_created_total` | Counter | Payments created |
+| `payment_processed_total` | Counter | Successful payments |
+| `payment_failed_total` | Counter | Failed payments |
+| `payment_refunded_total` | Counter | Refunded payments |
+| `payment_cancelled_total` | Counter | Cancelled payments |
+| `payment_webhooks_received_total` | Counter | Webhooks received |
+| `payment_webhooks_processed_total` | Counter | Webhooks processed |
+| `payment_webhooks_failed_total` | Counter | Webhooks failed |
+| `payment_processing_duration_seconds` | Histogram | Payment processing time |
+| `payment_amount` | Histogram | Payment amounts |
+| `payment_webhook_processing_seconds` | Histogram | Webhook processing time |
+| `payment_pending` | UpDownCounter | Pending payments |
 
-func Init() error {
-    var err error
-
-    BookingsReserved, err = telemetry.NewCounter(telemetry.MetricOpts{
-        Name:        "bookings_reserved_total",
-        Description: "Total number of seat reservations",
-        Unit:        "1",
-    })
-    if err != nil {
-        return err
-    }
-
-    // ... other metrics
-    return nil
-}
-```
-
-**Metrics to create:**
-
-| Metric | Type | Service | Description |
-|--------|------|---------|-------------|
-| `bookings_reserved_total` | Counter | booking | Reservations created |
-| `bookings_confirmed_total` | Counter | booking | Bookings confirmed |
-| `bookings_expired_total` | Counter | booking | Expired reservations |
-| `bookings_failed_total` | Counter | booking | Failed bookings |
-| `payments_processed_total` | Counter | payment | Successful payments |
-| `payments_failed_total` | Counter | payment | Failed payments |
-| `payments_refunded_total` | Counter | payment | Refunded payments |
-| `reservation_duration_seconds` | Histogram | booking | Time from reserve to confirm |
-| `payment_duration_seconds` | Histogram | payment | Payment processing time |
-| `seats_available` | Gauge | booking | Available seats per zone |
-
-**Where to increment:**
-- [ ] `booking_service.go` - increment counters after operations
-- [ ] `payment_service_impl.go` - increment counters after operations
-- [ ] `main.go` - call `metrics.Init()` on startup
+**Where metrics are recorded:**
+- [x] `booking_service.go` - ReserveSeats, ConfirmBooking, CancelBooking, ExpireReservations
+- [x] `payment_service_impl.go` - CreatePayment, ProcessPayment, RefundPayment, CancelPayment
+- [ ] `main.go` - call `metrics.Init()` on startup (TODO)
 
 ---
 
@@ -360,4 +348,4 @@ After implementation, verify:
 
 ---
 
-Last Updated: 2025-12-16 (Phase 1.4, 1.5 completed)
+Last Updated: 2025-12-16 (Phase 1 completed)

@@ -9,6 +9,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/prohmpiriya/booking-rush-10k-rps/backend-booking/internal/domain"
 	"github.com/prohmpiriya/booking-rush-10k-rps/backend-booking/internal/dto"
+	"github.com/prohmpiriya/booking-rush-10k-rps/backend-booking/internal/metrics"
 	"github.com/prohmpiriya/booking-rush-10k-rps/backend-booking/internal/repository"
 	"github.com/prohmpiriya/booking-rush-10k-rps/pkg/telemetry"
 	"go.opentelemetry.io/otel/attribute"
@@ -268,6 +269,9 @@ createBooking:
 		}
 	}()
 
+	// Record metrics
+	metrics.RecordReservation(ctx, booking.EventID, userID, booking.ZoneID, booking.Quantity)
+
 	span.SetAttributes(attribute.String("booking_id", booking.ID))
 	span.SetStatus(codes.Ok, "")
 	return &dto.ReserveSeatsResponse{
@@ -384,6 +388,10 @@ func (s *bookingService) ConfirmBooking(ctx context.Context, bookingID, userID s
 		}
 	}()
 
+	// Record metrics
+	durationSeconds := now.Sub(booking.ReservedAt).Seconds()
+	metrics.RecordConfirmation(ctx, booking.EventID, userID, durationSeconds)
+
 	span.SetStatus(codes.Ok, "")
 	return &dto.ConfirmBookingResponse{
 		BookingID:        bookingID,
@@ -478,6 +486,9 @@ func (s *bookingService) CancelBooking(ctx context.Context, bookingID, userID st
 			// TODO: Add proper logging
 		}
 	}()
+
+	// Record metrics
+	metrics.RecordCancellation(ctx, booking.EventID)
 
 	span.SetStatus(codes.Ok, "")
 	return &dto.ReleaseBookingResponse{
@@ -695,6 +706,11 @@ func (s *bookingService) ExpireReservations(ctx context.Context, limit int) (int
 		}(booking)
 
 		expiredCount++
+	}
+
+	// Record metrics
+	if expiredCount > 0 {
+		metrics.RecordExpiration(ctx, "", int64(expiredCount))
 	}
 
 	span.SetAttributes(attribute.Int("expired_count", expiredCount))

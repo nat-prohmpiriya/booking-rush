@@ -4,9 +4,11 @@ import (
 	"context"
 	"fmt"
 	"sync"
+	"time"
 
 	"github.com/prohmpiriya/booking-rush-10k-rps/backend-payment/internal/domain"
 	"github.com/prohmpiriya/booking-rush-10k-rps/backend-payment/internal/gateway"
+	"github.com/prohmpiriya/booking-rush-10k-rps/backend-payment/internal/metrics"
 	"github.com/prohmpiriya/booking-rush-10k-rps/backend-payment/internal/repository"
 	"github.com/prohmpiriya/booking-rush-10k-rps/pkg/telemetry"
 	"go.opentelemetry.io/otel/attribute"
@@ -97,6 +99,9 @@ func (s *paymentServiceImpl) CreatePayment(ctx context.Context, req *CreatePayme
 		return nil, fmt.Errorf("failed to save payment: %w", err)
 	}
 
+	// Record metrics
+	metrics.RecordPaymentCreated(ctx, payment.BookingID, string(payment.Method), payment.Currency, payment.Amount)
+
 	span.SetAttributes(attribute.String("payment_id", payment.ID))
 	span.SetStatus(codes.Ok, "")
 	return payment, nil
@@ -106,6 +111,7 @@ func (s *paymentServiceImpl) CreatePayment(ctx context.Context, req *CreatePayme
 func (s *paymentServiceImpl) ProcessPayment(ctx context.Context, paymentID string) (*domain.Payment, error) {
 	ctx, span := telemetry.StartSpan(ctx, "service.payment.process")
 	defer span.End()
+	startTime := time.Now()
 
 	span.SetAttributes(attribute.String("payment_id", paymentID))
 
@@ -154,6 +160,8 @@ func (s *paymentServiceImpl) ProcessPayment(ctx context.Context, paymentID strin
 		span.SetAttributes(attribute.String("failure_reason", "GATEWAY_ERROR"))
 		payment.Fail("GATEWAY_ERROR", err.Error())
 		s.repo.Update(ctx, payment)
+		// Record metrics
+		metrics.RecordPaymentFailed(ctx, payment.BookingID, string(payment.Method), "GATEWAY_ERROR")
 		span.SetStatus(codes.Ok, "") // Payment failed but operation succeeded
 		return payment, nil
 	}
@@ -186,6 +194,14 @@ func (s *paymentServiceImpl) ProcessPayment(ctx context.Context, paymentID strin
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
 		return nil, fmt.Errorf("failed to update payment: %w", err)
+	}
+
+	// Record metrics
+	durationSeconds := time.Since(startTime).Seconds()
+	if chargeResp.Success {
+		metrics.RecordPaymentProcessed(ctx, payment.BookingID, string(payment.Method), payment.Currency, durationSeconds)
+	} else {
+		metrics.RecordPaymentFailed(ctx, payment.BookingID, string(payment.Method), chargeResp.FailureReason)
 	}
 
 	span.SetStatus(codes.Ok, "")
@@ -303,6 +319,9 @@ func (s *paymentServiceImpl) RefundPayment(ctx context.Context, paymentID string
 		return nil, fmt.Errorf("failed to update payment: %w", err)
 	}
 
+	// Record metrics
+	metrics.RecordPaymentRefunded(ctx, payment.BookingID, reason, payment.Amount)
+
 	span.SetStatus(codes.Ok, "")
 	return payment, nil
 }
@@ -340,6 +359,9 @@ func (s *paymentServiceImpl) CancelPayment(ctx context.Context, paymentID string
 		span.SetStatus(codes.Error, err.Error())
 		return nil, fmt.Errorf("failed to update payment: %w", err)
 	}
+
+	// Record metrics
+	metrics.RecordPaymentCancelled(ctx, payment.BookingID)
 
 	span.SetStatus(codes.Ok, "")
 	return payment, nil
