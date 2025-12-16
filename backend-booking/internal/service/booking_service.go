@@ -14,6 +14,7 @@ import (
 	"github.com/prohmpiriya/booking-rush-10k-rps/pkg/telemetry"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/trace"
 )
 
 // BookingService defines the interface for booking business logic
@@ -272,6 +273,16 @@ createBooking:
 	// Record metrics
 	metrics.RecordReservation(ctx, booking.EventID, userID, booking.ZoneID, booking.Quantity)
 
+	// Add span event for reservation created
+	span.AddEvent("reservation_created", trace.WithAttributes(
+		attribute.String("booking_id", booking.ID),
+		attribute.String("event_id", booking.EventID),
+		attribute.String("zone_id", booking.ZoneID),
+		attribute.Int("quantity", booking.Quantity),
+		attribute.Float64("total_price", booking.TotalPrice),
+		attribute.String("status", string(booking.Status)),
+	))
+
 	span.SetAttributes(attribute.String("booking_id", booking.ID))
 	span.SetStatus(codes.Ok, "")
 	return &dto.ReserveSeatsResponse{
@@ -392,6 +403,14 @@ func (s *bookingService) ConfirmBooking(ctx context.Context, bookingID, userID s
 	durationSeconds := now.Sub(booking.ReservedAt).Seconds()
 	metrics.RecordConfirmation(ctx, booking.EventID, userID, durationSeconds)
 
+	// Add span event for booking confirmed
+	span.AddEvent("booking_confirmed", trace.WithAttributes(
+		attribute.String("booking_id", bookingID),
+		attribute.String("payment_id", paymentID),
+		attribute.String("confirmation_code", confirmationCode),
+		attribute.Float64("duration_seconds", durationSeconds),
+	))
+
 	span.SetStatus(codes.Ok, "")
 	return &dto.ConfirmBookingResponse{
 		BookingID:        bookingID,
@@ -489,6 +508,13 @@ func (s *bookingService) CancelBooking(ctx context.Context, bookingID, userID st
 
 	// Record metrics
 	metrics.RecordCancellation(ctx, booking.EventID)
+
+	// Add span event for booking cancelled
+	span.AddEvent("booking_cancelled", trace.WithAttributes(
+		attribute.String("booking_id", bookingID),
+		attribute.String("event_id", booking.EventID),
+		attribute.Int("quantity", booking.Quantity),
+	))
 
 	span.SetStatus(codes.Ok, "")
 	return &dto.ReleaseBookingResponse{

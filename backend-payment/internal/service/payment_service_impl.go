@@ -13,6 +13,7 @@ import (
 	"github.com/prohmpiriya/booking-rush-10k-rps/pkg/telemetry"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/trace"
 )
 
 // paymentServiceImpl implements PaymentService
@@ -101,6 +102,15 @@ func (s *paymentServiceImpl) CreatePayment(ctx context.Context, req *CreatePayme
 
 	// Record metrics
 	metrics.RecordPaymentCreated(ctx, payment.BookingID, string(payment.Method), payment.Currency, payment.Amount)
+
+	// Add span event for payment created
+	span.AddEvent("payment_created", trace.WithAttributes(
+		attribute.String("payment_id", payment.ID),
+		attribute.String("booking_id", payment.BookingID),
+		attribute.Float64("amount", payment.Amount),
+		attribute.String("currency", payment.Currency),
+		attribute.String("method", string(payment.Method)),
+	))
 
 	span.SetAttributes(attribute.String("payment_id", payment.ID))
 	span.SetStatus(codes.Ok, "")
@@ -200,8 +210,20 @@ func (s *paymentServiceImpl) ProcessPayment(ctx context.Context, paymentID strin
 	durationSeconds := time.Since(startTime).Seconds()
 	if chargeResp.Success {
 		metrics.RecordPaymentProcessed(ctx, payment.BookingID, string(payment.Method), payment.Currency, durationSeconds)
+		// Add span event for payment completed
+		span.AddEvent("payment_completed", trace.WithAttributes(
+			attribute.String("payment_id", payment.ID),
+			attribute.String("transaction_id", chargeResp.TransactionID),
+			attribute.Float64("duration_seconds", durationSeconds),
+		))
 	} else {
 		metrics.RecordPaymentFailed(ctx, payment.BookingID, string(payment.Method), chargeResp.FailureReason)
+		// Add span event for payment failed
+		span.AddEvent("payment_failed", trace.WithAttributes(
+			attribute.String("payment_id", payment.ID),
+			attribute.String("failure_reason", chargeResp.FailureReason),
+			attribute.Float64("duration_seconds", durationSeconds),
+		))
 	}
 
 	span.SetStatus(codes.Ok, "")

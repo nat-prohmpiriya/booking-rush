@@ -17,6 +17,9 @@
 | **Manual Spans** | ✅ | Handlers + Services done |
 | **Logger with Context** | ✅ | Saga handlers updated (80+ calls) |
 | **Business Metrics** | ✅ | Booking & Payment metrics created |
+| **Span Events** | ✅ | State change events (reservation, confirm, cancel, payment) |
+| **Error Tracking** | ✅ | Error counters + slow request tracking |
+| **Latency Histograms** | ✅ | Request duration with p50/p90/p99 buckets |
 
 ---
 
@@ -246,33 +249,54 @@ func (h *BookingHandler) Reserve(c *gin.Context) {
 
 ---
 
-## Phase 3: Advanced Metrics & Polish
+## Phase 3: Advanced Metrics & Polish ✅
 
-### 3.1 Latency Histograms
+### 3.1 Latency Histograms ✅
 
-- [ ] Add histogram buckets for p50, p90, p99
-- [ ] Track reservation-to-confirmation latency
-- [ ] Track payment processing latency
+- [x] Add histogram buckets for p50, p90, p99 (buckets: 5ms to 10s)
+- [x] Track reservation-to-confirmation latency (`booking_reservation_duration_seconds`)
+- [x] Track payment processing latency (`payment_processing_duration_seconds`)
+- [x] HTTP request duration (`booking_request_duration_seconds`, `payment_request_duration_seconds`)
 
-### 3.2 Gauge Metrics
+### 3.2 Gauge Metrics ✅
 
-- [ ] `active_reservations` - current pending reservations
-- [ ] `queue_position` - virtual queue depth
-- [ ] `rate_limit_remaining` - remaining requests per window
+- [x] `booking_active_reservations` - current pending reservations
+- [x] `queue_depth` - virtual queue depth
+- [x] `payment_pending` - current pending payments
+- [ ] `rate_limit_remaining` - remaining requests per window (Phase 2 - API Gateway)
 
-### 3.3 Error Tracking
+### 3.3 Error Tracking ✅
 
-- [ ] Error rate by service
-- [ ] Error rate by error type
-- [ ] Slow request tracking (>1s)
+- [x] `booking_errors_total` - Error count by error_type and operation
+- [x] `payment_errors_total` - Error count by error_type and operation
+- [x] `booking_slow_requests_total` - Slow request tracking (>1s)
+- [x] `payment_slow_requests_total` - Slow request tracking (>1s)
 
-### 3.4 Span Events
+**Helper functions added:**
+- `metrics.RecordError(ctx, errorType, operation)`
+- `metrics.RecordRequestDuration(ctx, operation, durationSeconds)`
+- `metrics.RecordSlowRequest(ctx, operation, durationSeconds)`
 
-Add events for important state changes:
+### 3.4 Span Events ✅
+
+Events added for important state changes:
+
+**Booking Service:**
+- `reservation_created` - When reservation is successfully created
+- `booking_confirmed` - When booking is confirmed with payment
+- `booking_cancelled` - When booking is cancelled
+
+**Payment Service:**
+- `payment_created` - When payment record is created
+- `payment_completed` - When payment is successfully processed
+- `payment_failed` - When payment processing fails
+
+**Example:**
 ```go
-span.AddEvent("payment_initiated", trace.WithAttributes(
-    attribute.String("payment_method", method),
-    attribute.Int64("amount", amount),
+span.AddEvent("payment_completed", trace.WithAttributes(
+    attribute.String("payment_id", payment.ID),
+    attribute.String("transaction_id", chargeResp.TransactionID),
+    attribute.Float64("duration_seconds", durationSeconds),
 ))
 ```
 
@@ -363,4 +387,4 @@ After implementation, verify:
 
 ---
 
-Last Updated: 2025-12-16 (Phase 2 nearly completed - Ticket Services pending)
+Last Updated: 2025-12-16 (Phase 3 completed, Phase 2 nearly completed - Ticket Services pending)

@@ -20,9 +20,14 @@ var (
 	QueueJoined *telemetry.Counter
 	QueueLeft   *telemetry.Counter
 
+	// Error tracking counters
+	ErrorsTotal      *telemetry.Counter
+	SlowRequestsTotal *telemetry.Counter
+
 	// Histograms
 	ReservationDuration *telemetry.Histogram
 	QueueWaitTime       *telemetry.Histogram
+	RequestDuration     *telemetry.Histogram
 
 	// Gauges
 	ActiveReservations *telemetry.UpDownCounter
@@ -123,6 +128,35 @@ func initMetrics() error {
 		Description: "Time spent waiting in queue",
 		Unit:        "s",
 	}, []float64{1, 5, 10, 30, 60, 120, 300, 600}) // 1s to 10min
+	if err != nil {
+		return err
+	}
+
+	// Request duration histogram for latency tracking (p50, p90, p99)
+	RequestDuration, err = telemetry.NewHistogramWithBuckets(telemetry.MetricOpts{
+		Name:        "booking_request_duration_seconds",
+		Description: "HTTP request duration in seconds",
+		Unit:        "s",
+	}, []float64{0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10}) // 5ms to 10s
+	if err != nil {
+		return err
+	}
+
+	// Error tracking
+	ErrorsTotal, err = telemetry.NewCounter(telemetry.MetricOpts{
+		Name:        "booking_errors_total",
+		Description: "Total number of errors by type",
+		Unit:        "1",
+	})
+	if err != nil {
+		return err
+	}
+
+	SlowRequestsTotal, err = telemetry.NewCounter(telemetry.MetricOpts{
+		Name:        "booking_slow_requests_total",
+		Description: "Total number of slow requests (>1s)",
+		Unit:        "1",
+	})
 	if err != nil {
 		return err
 	}
@@ -240,5 +274,40 @@ func RecordQueueLeave(ctx context.Context, eventID string, waitTimeSeconds float
 	}
 	if QueueDepth != nil {
 		QueueDepth.Dec(ctx)
+	}
+}
+
+// RecordError records an error by type and operation
+func RecordError(ctx context.Context, errorType, operation string) {
+	if ErrorsTotal != nil {
+		ErrorsTotal.Inc(ctx,
+			attribute.String("error_type", errorType),
+			attribute.String("operation", operation),
+		)
+	}
+}
+
+// RecordRequestDuration records HTTP request duration and tracks slow requests
+func RecordRequestDuration(ctx context.Context, operation string, durationSeconds float64) {
+	if RequestDuration != nil {
+		RequestDuration.Record(ctx, durationSeconds,
+			attribute.String("operation", operation),
+		)
+	}
+	// Track slow requests (>1s)
+	if durationSeconds > 1.0 && SlowRequestsTotal != nil {
+		SlowRequestsTotal.Inc(ctx,
+			attribute.String("operation", operation),
+		)
+	}
+}
+
+// RecordSlowRequest explicitly records a slow request
+func RecordSlowRequest(ctx context.Context, operation string, durationSeconds float64) {
+	if SlowRequestsTotal != nil {
+		SlowRequestsTotal.Inc(ctx,
+			attribute.String("operation", operation),
+			attribute.Float64("duration_seconds", durationSeconds),
+		)
 	}
 }
