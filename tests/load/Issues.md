@@ -354,28 +354,83 @@ docker-compose -f docker-compose.k6-1instance.yml restart inventory-worker
 
 #### วิธีแก้ถาวร ✅ FIXED
 
-**แก้ไขแล้ว:** ใช้วิธี 1 - เปลี่ยนจาก `ProduceSync` เป็น `ProduceAsync`
+**แก้ไขแล้ว 2 จุด:**
+
+**1. เปลี่ยนจาก `Produce` (sync) เป็น `ProduceAsync` (non-blocking)**
+
+File: `backend-booking/internal/service/event_publisher.go`
+
+```go
+// Before (blocking)
+err := p.producer.Produce(ctx, msg)
+
+// After (non-blocking with callback)
+p.producer.ProduceAsync(ctx, msg, func(err error) {
+    if err != nil && p.logger != nil {
+        p.logger.Error(fmt.Sprintf("failed to publish %s event: %v", eventType, err))
+    }
+})
+```
+
+เพิ่ม Logger interface และ ZapLoggerAdapter สำหรับ error callback
+
+**2. ลบ `go func()` wrapper ที่ซ้ำซ้อน**
+
+File: `backend-booking/internal/service/booking_service.go:266`
+
+```go
+// Before (double goroutine - leak!)
+go func() {
+    if pubErr := s.eventPublisher.PublishBookingCreated(context.Background(), booking); pubErr != nil {
+        // Log error
+    }
+}()
+
+// After (ProduceAsync is already non-blocking)
+_ = s.eventPublisher.PublishBookingCreated(ctx, booking)
+```
 
 **Files changed:**
 - `backend-booking/internal/service/event_publisher.go`
-  - เปลี่ยน `p.producer.Produce()` → `p.producer.ProduceAsync()` ใน `publishEvent()`
-  - เพิ่ม callback สำหรับ log error (fire-and-forget with logging)
+  - เปลี่ยน `Produce()` → `ProduceAsync()` ใน `publishEvent()`
+  - เพิ่ม `Logger` interface และ `ZapLoggerAdapter`
+- `backend-booking/internal/service/booking_service.go`
+  - ลบ `go func()` wrapper (line 266)
 - `backend-booking/main.go`
   - Pass logger ให้ EventPublisherConfig
 
-**ผลลัพธ์:**
-- Booking request ไม่ถูก block รอ Kafka ack
-- Error handling ผ่าน callback + logging
-- ไม่มี goroutine สะสม
+---
+
+#### ผลการทดสอบหลังแก้ไข
+
+**Goroutine Count:**
+
+| สถานะ | Goroutines |
+|-------|------------|
+| ก่อนแก้ | 895,417 |
+| หลังแก้ครั้งแรก (ProduceAsync) | 4,620 |
+| **หลังแก้ครบ (ลบ go func)** | **28** ✅ |
+
+**Smoke Test Results (2025-12-17 15:56):**
+
+| Metric | ค่า | สถานะ |
+|--------|-----|-------|
+| Requests | 3,462 | ✅ |
+| Success Rate | 100% | ✅ |
+| Error Rate | 0% | ✅ |
+| Avg Response | 2.38ms | ✅ |
+| p(95) Response | 4.93ms | ✅ |
+| Goroutines หลัง test | 28 | ✅ ไม่ leak |
 
 ---
 
-#### Pre-Test Checklist (อัพเดท)
+#### บทเรียน
 
-เพิ่มขั้นตอนก่อนรัน test:
+1. **ProduceSync vs ProduceAsync**: ถ้าไม่ต้องการ guarantee delivery, ใช้ async เพื่อไม่ block request
+2. **Double goroutine wrapping**: อย่าใช้ `go func()` ครอบ function ที่เป็น async อยู่แล้ว
+3. **pprof เป็น lifesaver**: ช่วยหา goroutine leak ได้ทันที
 
-1. [ ] Check goroutines: `curl localhost:9083/debug/pprof/goroutine?debug=1 | head -1`
-2. [ ] ถ้า goroutines > 1000 → restart booking service
-3. [ ] Clear Redis: `docker exec booking-rush-redis redis-cli -a redis123 FLUSHDB`
-4. [ ] Restart inventory-worker เพื่อ sync inventory
-5. [ ] Verify resources: `docker stats --no-stream | grep booking`
+```bash
+# เช็ค goroutine count
+curl -s 'http://localhost:9083/debug/pprof/goroutine?debug=1' | head -1
+```
