@@ -92,6 +92,17 @@ run_test() {
   local scenario=$1
 
   echo ""
+  # Ask about bypass gateway
+  read -p "Bypass Gateway? (y/n) [n]: " bypass_choice
+  BYPASS_GATEWAY="false"
+  if [ "$bypass_choice" = "y" ] || [ "$bypass_choice" = "Y" ]; then
+    BYPASS_GATEWAY="true"
+    echo "  → Testing directly to booking:8083 (bypass gateway)"
+  else
+    echo "  → Testing via gateway:8080"
+  fi
+  echo ""
+
   echo "Getting auth token..."
   TOKEN=$(cat << 'EOF' | curl -s "$AUTH_URL" -H "Content-Type: application/json" -d @- | jq -r '.data.access_token'
 {"email":"loadtest1@test.com","password":"Test123!"}
@@ -111,15 +122,21 @@ EOF
 
   # Generate filename with timestamp
   TIMESTAMP=$(date +%Y%m%d-%H%M%S)
-  RESULT_FILE="results/${scenario}-${TIMESTAMP}"
+  SUFFIX=""
+  if [ "$BYPASS_GATEWAY" = "true" ]; then
+    SUFFIX="-direct"
+  fi
+  RESULT_FILE="results/${scenario}${SUFFIX}-${TIMESTAMP}"
 
   echo "Running scenario: $scenario"
+  echo "Bypass Gateway: $BYPASS_GATEWAY"
   echo "Results will be saved to: ${RESULT_FILE}.json"
   echo ""
 
   K6_WEB_DASHBOARD=true k6 run \
     --env AUTH_TOKEN="$TOKEN" \
     --env SCENARIO="$scenario" \
+    --env BYPASS_GATEWAY="$BYPASS_GATEWAY" \
     --out json="${RESULT_FILE}.json" \
     --summary-export="${RESULT_FILE}-summary.json" \
     01-booking-reserve.js
@@ -128,6 +145,53 @@ EOF
   echo "=== Results saved ==="
   echo "  Full:    ${RESULT_FILE}.json"
   echo "  Summary: ${RESULT_FILE}-summary.json"
+}
+
+# Function to run Virtual Queue test
+run_queue_test() {
+  local scenario=$1
+
+  echo ""
+  echo "=== Virtual Queue Load Test ==="
+  echo "This test simulates:"
+  echo "  - 10,000 concurrent users joining queue"
+  echo "  - Queue releases 500 users at a time"
+  echo "  - Users with queue pass can book"
+  echo ""
+
+  # Check if REQUIRE_QUEUE_PASS is enabled
+  echo "Checking REQUIRE_QUEUE_PASS setting..."
+  QUEUE_CHECK=$(curl -s http://localhost:8080/health | jq -r '.queue_pass_required // "unknown"')
+  echo "  Queue Pass Required: $QUEUE_CHECK"
+  echo ""
+
+  # Create results folder
+  mkdir -p results
+
+  # Generate filename with timestamp
+  TIMESTAMP=$(date +%Y%m%d-%H%M%S)
+  RESULT_FILE="results/${scenario}-${TIMESTAMP}"
+
+  echo "Running scenario: $scenario"
+  echo "Results will be saved to: ${RESULT_FILE}.json"
+  echo ""
+
+  K6_WEB_DASHBOARD=true k6 run \
+    --env SCENARIO="$scenario" \
+    --out json="${RESULT_FILE}.json" \
+    --summary-export="${RESULT_FILE}-summary.json" \
+    06-virtual-queue.js
+
+  echo ""
+  echo "=== Results saved ==="
+  echo "  Full:    ${RESULT_FILE}.json"
+  echo "  Summary: ${RESULT_FILE}-summary.json"
+  echo ""
+  echo "=== Key Metrics to Verify ==="
+  echo "  - queue_join_success > 95%"
+  echo "  - queue_pass_received > 80%"
+  echo "  - booking_success > 90%"
+  echo "  - Zero overselling (check DB)"
 }
 
 # Main menu
@@ -143,9 +207,13 @@ echo "  6) all         - Run all scenarios (~25 min)"
 echo "  ---"
 echo "  7) reset       - Reset all (Redis + DB bookings + zones)"
 echo "  8) tokens      - Generate JWT tokens (run before test!)"
+echo "  ---"
+echo "  9) vq_smoke    - Virtual Queue: 100 users (quick test)"
+echo "  10) vq_10k     - Virtual Queue: 10,000 concurrent users"
+echo "  11) vq_15k     - Virtual Queue: 15,000 concurrent users (stress)"
 echo "  0) exit"
 echo ""
-read -p "Enter choice [0-8]: " choice
+read -p "Enter choice [0-11]: " choice
 
 case $choice in
   1) reset_data && run_test "smoke" ;;
@@ -156,6 +224,9 @@ case $choice in
   6) reset_data && run_test "all" ;;
   7) reset_data ;;
   8) generate_tokens ;;
+  9) reset_data && run_queue_test "virtual_queue_smoke" ;;
+  10) reset_data && run_queue_test "virtual_queue_10k" ;;
+  11) reset_data && run_queue_test "virtual_queue_15k" ;;
   0) echo "Bye!"; exit 0 ;;
   *) echo "Invalid choice"; exit 1 ;;
 esac

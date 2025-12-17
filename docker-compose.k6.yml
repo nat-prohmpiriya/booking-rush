@@ -24,7 +24,7 @@ services:
       args:
         SERVICE: backend-api-gateway
     image: booking-rush/api-gateway:prod
-    container_name: booking-rush-gateway
+    # No container_name - allows scaling with docker-compose --scale
     expose:
       - "8080"
     environment:
@@ -43,6 +43,8 @@ services:
       ticket:
         condition: service_healthy
     restart: unless-stopped
+    deploy:
+      replicas: 3
     networks:
       - booking-rush-local
 

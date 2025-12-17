@@ -15,7 +15,11 @@ const insufficientSeatsErrors = new Counter('insufficient_seats_errors');
 const serverErrors = new Counter('server_errors');
 
 // Load test data from environment or use defaults
-const BASE_URL = __ENV.BASE_URL || 'http://localhost:8080/api/v1';
+const BYPASS_GATEWAY = __ENV.BYPASS_GATEWAY === 'true';
+const GATEWAY_URL = __ENV.GATEWAY_URL || 'http://localhost:8080/api/v1';
+const BOOKING_URL = __ENV.BOOKING_URL || 'http://localhost:8083/api/v1';
+const BASE_URL = BYPASS_GATEWAY ? BOOKING_URL : (__ENV.BASE_URL || GATEWAY_URL);
+const AUTH_URL = GATEWAY_URL; // Always use gateway for auth
 const AUTH_EMAIL = __ENV.AUTH_EMAIL || 'loadtest1@test.com';
 const AUTH_PASSWORD = __ENV.AUTH_PASSWORD || 'Test123!';
 
@@ -90,8 +94,8 @@ const allScenarios = {
         rate: 5000,
         timeUnit: '1s',
         duration: '5m',
-        preAllocatedVUs: 1000,
-        maxVUs: 2000,
+        preAllocatedVUs: 2000,
+        maxVUs: 5000,
         tags: { scenario: 'sustained' },
         exec: 'reserveSeats',
     },
@@ -172,12 +176,20 @@ export function reserveSeats(data) {
         unit_price: 100.00,
     });
 
+    const headers = {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+        'X-Idempotency-Key': idempotencyKey,
+    };
+
+    // When bypassing gateway, add X-User-ID and X-Tenant-ID headers directly
+    if (BYPASS_GATEWAY) {
+        headers['X-User-ID'] = userId;
+        headers['X-Tenant-ID'] = '00000000-0000-0000-0000-000000000001'; // Default tenant for load test
+    }
+
     const params = {
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`,
-            'X-Idempotency-Key': idempotencyKey,
-        },
+        headers: headers,
         tags: { name: 'ReserveSeats' },
     };
 
@@ -222,13 +234,14 @@ export function reserveSeats(data) {
 // Lifecycle functions
 export function setup() {
     console.log(`Starting load test against ${BASE_URL}`);
+    console.log(`Bypass Gateway: ${BYPASS_GATEWAY}`);
     console.log(`Test data: ${eventIds.length} events, ${zoneIds.length} zones, ${tokens.length} tokens`);
 
     // Login to get auth token if not provided via ENV
     let token = AUTH_TOKEN;
     if (!token) {
         console.log(`Logging in as ${AUTH_EMAIL}...`);
-        const loginResponse = http.post(`${BASE_URL}/auth/login`, JSON.stringify({
+        const loginResponse = http.post(`${AUTH_URL}/auth/login`, JSON.stringify({
             email: AUTH_EMAIL,
             password: AUTH_PASSWORD,
         }), {
