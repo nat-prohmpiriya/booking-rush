@@ -302,8 +302,11 @@ func main() {
 			// Join queue (requires authentication)
 			queue.POST("/join", middleware.IdempotencyMiddleware(idempotencyConfig), container.QueueHandler.JoinQueue)
 
-			// Get current position in queue
+			// Get current position in queue (polling - legacy)
 			queue.GET("/position/:event_id", container.QueueHandler.GetPosition)
+
+			// Stream position updates via SSE (reduces polling overhead by 50x)
+			queue.GET("/position/:event_id/stream", container.QueueHandler.StreamPosition)
 
 			// Leave queue
 			queue.DELETE("/leave", container.QueueHandler.LeaveQueue)

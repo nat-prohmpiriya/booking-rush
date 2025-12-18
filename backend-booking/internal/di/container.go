@@ -102,7 +102,7 @@ func NewContainer(cfg *ContainerConfig) *Container {
 	// Saga is triggered asynchronously after payment success via webhook
 	c.BookingHandler = handler.NewBookingHandler(c.BookingService, c.QueueService, cfg.BookingHandlerConfig)
 
-	c.QueueHandler = handler.NewQueueHandler(c.QueueService)
+	c.QueueHandler = handler.NewQueueHandler(c.QueueService, c.Redis)
 	c.AdminHandler = handler.NewAdminHandler(c.Redis)
 	c.SagaHandler = handler.NewSagaHandler(c.SagaService)
 

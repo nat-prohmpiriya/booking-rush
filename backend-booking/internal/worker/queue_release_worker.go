@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"sync"
 	"time"
@@ -12,6 +13,7 @@ import (
 	"github.com/prohmpiriya/booking-rush-10k-rps/backend-booking/internal/domain"
 	"github.com/prohmpiriya/booking-rush-10k-rps/backend-booking/internal/repository"
 	"github.com/prohmpiriya/booking-rush-10k-rps/pkg/logger"
+	"github.com/prohmpiriya/booking-rush-10k-rps/pkg/redis"
 )
 
 // QueueReleaseWorkerConfig holds configuration for the queue release worker
@@ -45,11 +47,20 @@ type ReleasedUser struct {
 	QueuePassExpires time.Time
 }
 
+// QueuePassReadyMessage is published when a user gets a queue pass
+type QueuePassReadyMessage struct {
+	UserID    string `json:"user_id"`
+	EventID   string `json:"event_id"`
+	QueuePass string `json:"queue_pass"`
+	ExpiresAt int64  `json:"expires_at"` // Unix timestamp
+}
+
 // QueueReleaseWorker releases users from the virtual queue in batches
 type QueueReleaseWorker struct {
-	config    *QueueReleaseWorkerConfig
-	queueRepo repository.QueueRepository
-	log       *logger.Logger
+	config      *QueueReleaseWorkerConfig
+	queueRepo   repository.QueueRepository
+	redisClient *redis.Client // For Pub/Sub publishing
+	log         *logger.Logger
 
 	// Metrics
 	mu               sync.Mutex
@@ -68,6 +79,7 @@ type QueueReleaseWorker struct {
 func NewQueueReleaseWorker(
 	cfg *QueueReleaseWorkerConfig,
 	queueRepo repository.QueueRepository,
+	redisClient *redis.Client, // For Pub/Sub publishing
 	log *logger.Logger,
 ) *QueueReleaseWorker {
 	if cfg == nil {
@@ -89,6 +101,7 @@ func NewQueueReleaseWorker(
 	return &QueueReleaseWorker{
 		config:          cfg,
 		queueRepo:       queueRepo,
+		redisClient:     redisClient,
 		log:             log,
 		configCache:     make(map[string]*repository.EventQueueConfig),
 		configCacheTTL:  30 * time.Second, // Cache config for 30 seconds
@@ -189,6 +202,10 @@ func (w *QueueReleaseWorker) releaseFromQueue(ctx context.Context, eventID strin
 			w.log.Error(fmt.Sprintf("Failed to store queue pass for user %s: %v", userID, err))
 			continue
 		}
+
+		// Publish queue pass ready notification via Pub/Sub
+		// This allows SSE clients to receive real-time updates without polling
+		w.publishQueuePassReady(ctx, eventID, userID, queuePass, expiresAt)
 
 		releasedCount++
 		w.log.Debug(fmt.Sprintf("Released user %s from queue %s with pass expiring at %v",
@@ -375,4 +392,40 @@ func (w *QueueReleaseWorker) SetEventConfig(ctx context.Context, eventID string,
 // GetDefaultMaxConcurrent returns the default max concurrent bookings
 func (w *QueueReleaseWorker) GetDefaultMaxConcurrent() int {
 	return w.config.DefaultMaxConcurrent
+}
+
+// QueuePassChannelKey returns the Redis Pub/Sub channel key for queue pass notifications
+// Format: queue:pass:{event_id}:{user_id} (per-user channel)
+// This provides targeted delivery - each user only receives their own queue pass notification
+// Trade-off: More Redis connections (1 per SSE client) but no broadcast amplification
+func QueuePassChannelKey(eventID, userID string) string {
+	return fmt.Sprintf("queue:pass:%s:%s", eventID, userID)
+}
+
+// publishQueuePassReady publishes a queue pass ready notification via Redis Pub/Sub
+func (w *QueueReleaseWorker) publishQueuePassReady(ctx context.Context, eventID, userID, queuePass string, expiresAt time.Time) {
+	if w.redisClient == nil {
+		return
+	}
+
+	msg := QueuePassReadyMessage{
+		UserID:    userID,
+		EventID:   eventID,
+		QueuePass: queuePass,
+		ExpiresAt: expiresAt.Unix(),
+	}
+
+	data, err := json.Marshal(msg)
+	if err != nil {
+		w.log.Error(fmt.Sprintf("Failed to marshal queue pass message: %v", err))
+		return
+	}
+
+	channel := QueuePassChannelKey(eventID, userID)
+	if err := w.redisClient.Publish(ctx, channel, data).Err(); err != nil {
+		w.log.Error(fmt.Sprintf("Failed to publish queue pass notification for user %s: %v", userID, err))
+		return
+	}
+
+	w.log.Debug(fmt.Sprintf("Published queue pass ready for user %s on channel %s", userID, channel))
 }

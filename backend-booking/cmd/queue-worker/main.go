@@ -81,8 +81,8 @@ func main() {
 	appLog.Info(fmt.Sprintf("Worker configuration: DefaultMaxConcurrent=%d, ReleaseInterval=%v, DefaultQueuePassTTL=%v",
 		workerCfg.DefaultMaxConcurrent, workerCfg.ReleaseInterval, workerCfg.DefaultQueuePassTTL))
 
-	// Create and start queue release worker
-	queueWorker := worker.NewQueueReleaseWorker(workerCfg, queueRepo, appLog)
+	// Create and start queue release worker (pass redis client for Pub/Sub publishing)
+	queueWorker := worker.NewQueueReleaseWorker(workerCfg, queueRepo, redis, appLog)
 
 	// Start worker in background
 	go queueWorker.Start(ctx)

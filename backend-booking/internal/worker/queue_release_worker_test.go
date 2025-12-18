@@ -55,6 +55,11 @@ func (m *MockQueueRepository) StoreQueuePass(ctx context.Context, eventID, userI
 	return args.Error(0)
 }
 
+func (m *MockQueueRepository) GetQueuePass(ctx context.Context, eventID, userID string) (string, error) {
+	args := m.Called(ctx, eventID, userID)
+	return args.String(0), args.Error(1)
+}
+
 func (m *MockQueueRepository) ValidateQueuePass(ctx context.Context, eventID, userID, queuePass string) (bool, error) {
 	args := m.Called(ctx, eventID, userID, queuePass)
 	return args.Get(0).(bool), args.Error(1)
@@ -120,7 +125,7 @@ func TestNewQueueReleaseWorker(t *testing.T) {
 			DefaultQueuePassTTL:  10 * time.Minute,
 			JWTSecret:            "custom-secret",
 		}
-		worker := NewQueueReleaseWorker(cfg, mockRepo, nil)
+		worker := NewQueueReleaseWorker(cfg, mockRepo, nil, nil)
 		assert.NotNil(t, worker)
 		assert.Equal(t, 1000, worker.GetDefaultMaxConcurrent())
 	})
@@ -132,7 +137,7 @@ func TestNewQueueReleaseWorker(t *testing.T) {
 			DefaultQueuePassTTL:  0,
 			JWTSecret:            testWorkerJWTSecret, // JWTSecret is now required
 		}
-		worker := NewQueueReleaseWorker(cfg, mockRepo, nil)
+		worker := NewQueueReleaseWorker(cfg, mockRepo, nil, nil)
 		assert.NotNil(t, worker)
 		assert.Equal(t, 500, worker.GetDefaultMaxConcurrent())
 	})
@@ -142,7 +147,7 @@ func TestNewQueueReleaseWorker(t *testing.T) {
 			JWTSecret: "",
 		}
 		assert.Panics(t, func() {
-			NewQueueReleaseWorker(cfg, mockRepo, nil)
+			NewQueueReleaseWorker(cfg, mockRepo, nil, nil)
 		})
 	})
 }
@@ -155,7 +160,7 @@ func TestQueueReleaseWorker_ReleaseFromQueueOnce(t *testing.T) {
 			DefaultQueuePassTTL:  5 * time.Minute,
 			JWTSecret:            "test-secret",
 		}
-		worker := NewQueueReleaseWorker(cfg, mockRepo, nil)
+		worker := NewQueueReleaseWorker(cfg, mockRepo, nil, nil)
 
 		ctx := context.Background()
 		eventID := "event-123"
@@ -190,7 +195,7 @@ func TestQueueReleaseWorker_ReleaseFromQueueOnce(t *testing.T) {
 			DefaultQueuePassTTL:  5 * time.Minute,
 			JWTSecret:            "test-secret",
 		}
-		worker := NewQueueReleaseWorker(cfg, mockRepo, nil)
+		worker := NewQueueReleaseWorker(cfg, mockRepo, nil, nil)
 
 		ctx := context.Background()
 		eventID := "event-123"
@@ -214,7 +219,7 @@ func TestQueueReleaseWorker_ReleaseFromQueueOnce(t *testing.T) {
 			DefaultQueuePassTTL:  5 * time.Minute,
 			JWTSecret:            testWorkerJWTSecret,
 		}
-		worker := NewQueueReleaseWorker(cfg, mockRepo, nil)
+		worker := NewQueueReleaseWorker(cfg, mockRepo, nil, nil)
 
 		ctx := context.Background()
 		eventID := "event-123"
@@ -238,7 +243,7 @@ func TestQueueReleaseWorker_ReleaseFromQueueOnce(t *testing.T) {
 			DefaultQueuePassTTL:  5 * time.Minute,
 			JWTSecret:            testWorkerJWTSecret,
 		}
-		worker := NewQueueReleaseWorker(cfg, mockRepo, nil)
+		worker := NewQueueReleaseWorker(cfg, mockRepo, nil, nil)
 
 		ctx := context.Background()
 		eventID := "event-123"
@@ -261,7 +266,7 @@ func TestQueueReleaseWorker_ReleaseFromQueueOnce(t *testing.T) {
 			DefaultQueuePassTTL:  5 * time.Minute,
 			JWTSecret:            testWorkerJWTSecret,
 		}
-		worker := NewQueueReleaseWorker(cfg, mockRepo, nil)
+		worker := NewQueueReleaseWorker(cfg, mockRepo, nil, nil)
 
 		ctx := context.Background()
 		eventID := "event-123"
@@ -296,7 +301,7 @@ func TestQueueReleaseWorker_GenerateQueuePass(t *testing.T) {
 			DefaultQueuePassTTL:  5 * time.Minute,
 			JWTSecret:            secret,
 		}
-		worker := NewQueueReleaseWorker(cfg, mockRepo, nil)
+		worker := NewQueueReleaseWorker(cfg, mockRepo, nil, nil)
 
 		queuePass, expiresAt, err := worker.generateQueuePass("user-123", "event-456")
 
@@ -325,7 +330,7 @@ func TestQueueReleaseWorker_GenerateQueuePass(t *testing.T) {
 		cfg := &QueueReleaseWorkerConfig{
 			JWTSecret: secret,
 		}
-		worker := NewQueueReleaseWorker(cfg, mockRepo, nil)
+		worker := NewQueueReleaseWorker(cfg, mockRepo, nil, nil)
 
 		queuePass, expiresAt, err := worker.generateQueuePassWithTTL("user-123", "event-456", 10*time.Minute)
 
@@ -342,7 +347,7 @@ func TestQueueReleaseWorker_GetMetrics(t *testing.T) {
 		DefaultQueuePassTTL:  5 * time.Minute,
 		JWTSecret:            "test-secret",
 	}
-	worker := NewQueueReleaseWorker(cfg, mockRepo, nil)
+	worker := NewQueueReleaseWorker(cfg, mockRepo, nil, nil)
 
 	// Initial metrics should be zero
 	total, lastTime, lastCount := worker.GetMetrics()
