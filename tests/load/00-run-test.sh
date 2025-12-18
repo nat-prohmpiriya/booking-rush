@@ -194,6 +194,144 @@ run_queue_test() {
   echo "  - Zero overselling (check DB)"
 }
 
+# Function to monitor system during test
+monitor_system() {
+  echo ""
+  echo "=== System Monitor ==="
+  echo "Press Ctrl+C to stop"
+  echo ""
+
+  read -p "Refresh interval (seconds) [2]: " interval
+  interval=${interval:-2}
+
+  while true; do
+    clear
+    echo "╔══════════════════════════════════════════════════════════════════════════════╗"
+    echo "║                    📊 SYSTEM MONITOR - $(date '+%H:%M:%S')                            ║"
+    echo "╠══════════════════════════════════════════════════════════════════════════════╣"
+
+    # Docker CPU/Memory
+    echo "║ 🐳 DOCKER CONTAINERS (Top CPU)                                               ║"
+    echo "╟──────────────────────────────────────────────────────────────────────────────╢"
+    printf "║ %-40s %8s %15s ║\n" "CONTAINER" "CPU" "MEMORY"
+    echo "╟──────────────────────────────────────────────────────────────────────────────╢"
+
+    docker stats --no-stream --format "{{.Name}}\t{{.CPUPerc}}\t{{.MemUsage}}" 2>/dev/null | \
+      sort -t$'\t' -k2 -rn 2>/dev/null | head -10 | \
+      while IFS=$'\t' read -r name cpu mem; do
+        printf "║ %-40s %8s %15s ║\n" "${name:0:40}" "$cpu" "${mem%% *}"
+      done
+
+    echo "╠══════════════════════════════════════════════════════════════════════════════╣"
+
+    # Redis Stats
+    REDIS_CLIENTS=$(docker exec booking-rush-redis redis-cli -a redis123 --no-auth-warning INFO clients 2>/dev/null | grep connected_clients | cut -d: -f2 | tr -d '\r')
+    REDIS_MEM=$(docker exec booking-rush-redis redis-cli -a redis123 --no-auth-warning INFO memory 2>/dev/null | grep used_memory_human | cut -d: -f2 | tr -d '\r')
+    REDIS_KEYS=$(docker exec booking-rush-redis redis-cli -a redis123 --no-auth-warning DBSIZE 2>/dev/null | grep -oE '[0-9]+')
+    REDIS_OPS=$(docker exec booking-rush-redis redis-cli -a redis123 --no-auth-warning INFO stats 2>/dev/null | grep instantaneous_ops_per_sec | cut -d: -f2 | tr -d '\r')
+
+    echo "║ 🔴 REDIS                                                                      ║"
+    echo "╟──────────────────────────────────────────────────────────────────────────────╢"
+    printf "║   Connections: %-10s  Memory: %-10s  Keys: %-10s  Ops/s: %-6s ║\n" \
+      "${REDIS_CLIENTS:-0}/20000" "${REDIS_MEM:-0}" "${REDIS_KEYS:-0}" "${REDIS_OPS:-0}"
+
+    echo "╠══════════════════════════════════════════════════════════════════════════════╣"
+
+    # PostgreSQL Stats
+    PG_CONN=$(docker exec booking-rush-postgres psql -U postgres -t -c "SELECT count(*) FROM pg_stat_activity;" 2>/dev/null | tr -d ' ')
+    PG_ACTIVE=$(docker exec booking-rush-postgres psql -U postgres -t -c "SELECT count(*) FROM pg_stat_activity WHERE state='active';" 2>/dev/null | tr -d ' ')
+    PG_IDLE=$(docker exec booking-rush-postgres psql -U postgres -t -c "SELECT count(*) FROM pg_stat_activity WHERE state='idle';" 2>/dev/null | tr -d ' ')
+    PG_TPS=$(docker exec booking-rush-postgres psql -U postgres -t -c "SELECT sum(xact_commit + xact_rollback) FROM pg_stat_database;" 2>/dev/null | tr -d ' ')
+
+    echo "║ 🐘 POSTGRESQL                                                                 ║"
+    echo "╟──────────────────────────────────────────────────────────────────────────────╢"
+    printf "║   Connections: %-10s  Active: %-10s  Idle: %-10s  TXN: %-8s ║\n" \
+      "${PG_CONN:-0}/1000" "${PG_ACTIVE:-0}" "${PG_IDLE:-0}" "${PG_TPS:-0}"
+
+    echo "╠══════════════════════════════════════════════════════════════════════════════╣"
+
+    # Booking Service Goroutines (check for leaks)
+    GOROUTINES=""
+    for i in 1 2 3 4 5; do
+      G=$(curl -s "http://localhost:908${i}/debug/pprof/goroutine?debug=1" 2>/dev/null | head -1 | grep -oE '[0-9]+' | head -1)
+      if [ -n "$G" ]; then
+        GOROUTINES="$GOROUTINES booking-$i:$G"
+      fi
+    done
+
+    echo "║ 🔧 BOOKING SERVICE GOROUTINES                                                 ║"
+    echo "╟──────────────────────────────────────────────────────────────────────────────╢"
+    printf "║  %s\n" "$GOROUTINES"
+    printf "║   (Normal: <100, Warning: >1000, Critical: >10000)                          ║\n"
+
+    echo "╠══════════════════════════════════════════════════════════════════════════════╣"
+
+    # Network I/O
+    echo "║ 📡 NETWORK I/O (Top)                                                          ║"
+    echo "╟──────────────────────────────────────────────────────────────────────────────╢"
+    docker stats --no-stream --format "{{.Name}}\t{{.NetIO}}" 2>/dev/null | \
+      grep -E "(nginx|gateway|booking|redis|postgres)" | head -5 | \
+      while IFS=$'\t' read -r name netio; do
+        printf "║   %-35s %s\n" "${name:0:35}" "$netio"
+      done
+    printf "║                                                                              ║\n"
+
+    echo "╚══════════════════════════════════════════════════════════════════════════════╝"
+    echo ""
+    echo "Refreshing every ${interval}s... (Ctrl+C to stop)"
+
+    sleep "$interval"
+  done
+}
+
+# Function to run SSE Virtual Queue test (reduces polling by 50x)
+run_sse_test() {
+  local scenario=$1
+
+  echo ""
+  echo "=== Virtual Queue SSE Load Test ==="
+  echo "This test uses Server-Sent Events (SSE) to reduce polling:"
+  echo "  - Polling: 10K users × 2s poll = 5,000 req/sec overhead"
+  echo "  - SSE: 10K connections × 1 req = 10K connections (sustained)"
+  echo "  - Result: 50x reduction in request overhead"
+  echo ""
+
+  # Check if REQUIRE_QUEUE_PASS is enabled
+  echo "Checking REQUIRE_QUEUE_PASS setting..."
+  QUEUE_CHECK=$(curl -s http://localhost:8080/health | jq -r '.queue_pass_required // "unknown"')
+  echo "  Queue Pass Required: $QUEUE_CHECK"
+  echo ""
+
+  # Create results folder
+  mkdir -p results
+
+  # Generate filename with timestamp
+  TIMESTAMP=$(date +%Y%m%d-%H%M%S)
+  RESULT_FILE="results/${scenario}-${TIMESTAMP}"
+
+  echo "Running scenario: $scenario"
+  echo "Results will be saved to: ${RESULT_FILE}.json"
+  echo ""
+
+  K6_WEB_DASHBOARD=true k6 run \
+    --env SCENARIO="$scenario" \
+    --out json="${RESULT_FILE}.json" \
+    --summary-export="${RESULT_FILE}-summary.json" \
+    07-virtual-queue-sse.js
+
+  echo ""
+  echo "=== Results saved ==="
+  echo "  Full:    ${RESULT_FILE}.json"
+  echo "  Summary: ${RESULT_FILE}-summary.json"
+  echo ""
+  echo "=== Key Metrics to Verify ==="
+  echo "  - queue_join_success > 95%"
+  echo "  - queue_pass_received > 80%"
+  echo "  - booking_success > 90%"
+  echo "  - sse_connections (total SSE streams)"
+  echo "  - sse_errors (should be 0)"
+}
+
 # Main menu
 echo "=== k6 Load Test Runner ==="
 echo ""
@@ -207,13 +345,22 @@ echo "  6) all         - Run all scenarios (~25 min)"
 echo "  ---"
 echo "  7) reset       - Reset all (Redis + DB bookings + zones)"
 echo "  8) tokens      - Generate JWT tokens (run before test!)"
+echo "  9) monitor     - Real-time system monitor (CPU, Memory, Redis, PostgreSQL)"
 echo "  ---"
-echo "  9) vq_smoke    - Virtual Queue: 100 users (quick test)"
-echo "  10) vq_10k     - Virtual Queue: 10,000 concurrent users"
-echo "  11) vq_15k     - Virtual Queue: 15,000 concurrent users (stress)"
+echo "  Virtual Queue (Polling - Legacy):"
+echo "  10) vq_smoke   - Virtual Queue: 100 users (quick test)"
+echo "  11) vq_10k     - Virtual Queue: 10,000 concurrent users"
+echo "  12) vq_15k     - Virtual Queue: 15,000 concurrent users (stress)"
+echo "  ---"
+echo "  Virtual Queue (SSE - Optimized, 50x less overhead):"
+echo "  13) sse_smoke  - SSE: 100 users (quick test)"
+echo "  14) sse_1k     - SSE: 1,000 users"
+echo "  15) sse_3k     - SSE: 3,000 users"
+echo "  16) sse_5k     - SSE: 5,000 users"
+echo "  17) sse_10k    - SSE: 10,000 concurrent users"
 echo "  0) exit"
 echo ""
-read -p "Enter choice [0-11]: " choice
+read -p "Enter choice [0-17]: " choice
 
 case $choice in
   1) reset_data && run_test "smoke" ;;
@@ -224,9 +371,15 @@ case $choice in
   6) reset_data && run_test "all" ;;
   7) reset_data ;;
   8) generate_tokens ;;
-  9) reset_data && run_queue_test "virtual_queue_smoke" ;;
-  10) reset_data && run_queue_test "virtual_queue_10k" ;;
-  11) reset_data && run_queue_test "virtual_queue_15k" ;;
+  9) monitor_system ;;
+  10) reset_data && run_queue_test "virtual_queue_smoke" ;;
+  11) reset_data && run_queue_test "virtual_queue_10k" ;;
+  12) reset_data && run_queue_test "virtual_queue_15k" ;;
+  13) reset_data && run_sse_test "sse_smoke" ;;
+  14) reset_data && run_sse_test "sse_1k" ;;
+  15) reset_data && run_sse_test "sse_3k" ;;
+  16) reset_data && run_sse_test "sse_5k" ;;
+  17) reset_data && run_sse_test "sse_10k" ;;
   0) echo "Bye!"; exit 0 ;;
   *) echo "Invalid choice"; exit 1 ;;
 esac

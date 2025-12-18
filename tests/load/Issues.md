@@ -434,3 +434,155 @@ _ = s.eventPublisher.PublishBookingCreated(ctx, booking)
 # เช็ค goroutine count
 curl -s 'http://localhost:9083/debug/pprof/goroutine?debug=1' | head -1
 ```
+
+---
+
+### Issue #5: Per-User vs Per-Event Redis Pub/Sub Channel Strategy
+
+**Date:** 2025-12-18
+
+---
+
+#### Background: SSE for Virtual Queue Position Updates
+
+ใน Virtual Queue ผู้ใช้ต้องรอรับ "queue pass" ก่อนจะจองตั๋วได้ มีสองวิธี stream position updates:
+
+1. **Polling:** Client poll ทุก 500ms → ที่ 10K users = **20,000 req/s** load บน Redis
+2. **SSE + Pub/Sub:** Client subscribe รอ notification → **~50 publishes/s** (batch 500 users/sec)
+
+เราเลือก SSE + Redis Pub/Sub เพื่อลด Redis load
+
+---
+
+#### Strategy 1: Per-User Channel (Original)
+
+```
+Channel: queue:pass:{event_id}:{user_id}
+```
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                   Redis                                  │
+│                                                          │
+│  PUBLISH queue:pass:event1:user1 → User1 SSE Handler    │
+│  PUBLISH queue:pass:event1:user2 → User2 SSE Handler    │
+│  PUBLISH queue:pass:event1:user3 → User3 SSE Handler    │
+│  ...                                                     │
+│  PUBLISH queue:pass:event1:user10000 → User10000        │
+│                                                          │
+│  [10,000 channels × 10,000 subscribers]                 │
+└─────────────────────────────────────────────────────────┘
+```
+
+**ข้อดี:**
+- Targeted delivery — แต่ละ user รับเฉพาะ message ของตัวเอง
+- No broadcast storm
+
+**ข้อเสีย:**
+- **10,000 Redis connections** (1 SUBSCRIBE per user)
+- ใช้ **73% ของ Redis maxclients** (7,301/10,000)
+
+**Test Results (sse_10k_queue):**
+- queue_join_success: 10.69%
+- queue_pass_received: 57.14%
+- **Redis connections: 7,301 (73%)**
+
+---
+
+#### Strategy 2: Per-Event Channel (Attempted Optimization)
+
+```
+Channel: queue:pass:{event_id}
+```
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                   Redis                                  │
+│                                                          │
+│  PUBLISH queue:pass:event1 → [ALL 10,000 subscribers]   │
+│                                                          │
+│  Single channel, 10,000 subscribers filter by user_id   │
+└─────────────────────────────────────────────────────────┘
+```
+
+**ข้อดี:**
+- **ลด Redis connections จาก 10,000 → ~1 per event**
+- Redis connections ลดลง: 2,298 (23%) vs 7,301 (73%)
+
+**ข้อเสีย:**
+- **Broadcast Storm:** ทุก PUBLISH ต้อง deliver ให้ 10,000 subscribers
+- 500 users released/sec × 10,000 subscribers = **5,000,000 message deliveries/sec**
+- Client CPU spike จาก JSON parsing ทุก message
+- Latency เพิ่มขึ้น
+
+**Test Results (sse_10k_queue with Per-Event):**
+- queue_join_success: **5.39%** (worse than 10.69%)
+- queue_pass_received: **32.98%** (worse than 57.14%)
+- Redis connections: 2,298 (better)
+- **Overall performance: WORSE**
+
+---
+
+#### Comparison Table
+
+| Metric | Per-User Channel | Per-Event Channel |
+|--------|------------------|-------------------|
+| Redis Connections | 7,301 (73%) | 2,298 (23%) ✅ |
+| queue_join_success | 10.69% | 5.39% ✗ |
+| queue_pass_received | 57.14% | 32.98% ✗ |
+| Message Deliveries/sec | ~500 | ~5,000,000 ✗ |
+| Client CPU Load | Low | High |
+| Scalability | Limited by connections | Limited by broadcast |
+
+---
+
+#### Root Cause Analysis
+
+```
+Per-User Channel:
+  Bottleneck = Redis maxclients (connection limit)
+  500 PUBLISH → 500 message deliveries
+
+Per-Event Channel:
+  Bottleneck = Broadcast amplification
+  500 PUBLISH → 5,000,000 message deliveries (10,000x amplification!)
+```
+
+**Per-Event Channel กลับแย่ลงเพราะ:**
+1. แม้ connection ลดลง แต่ message volume เพิ่ม exponential
+2. ทุก subscriber ต้อง receive, parse, filter ทุก message
+3. CPU bound บน client-side
+4. Network bandwidth สูงขึ้น
+
+---
+
+#### Decision: Revert to Per-User + Scale Redis
+
+**วิธีแก้:**
+1. **Revert กลับไปใช้ Per-User Channel** — targeted delivery ดีกว่า
+2. **เพิ่ม Redis instances** — แก้ปัญหา connection limit
+3. **หรือ เพิ่ม maxclients** — ถ้า memory พอ
+
+```bash
+# เพิ่ม Redis maxclients
+docker exec booking-rush-redis redis-cli -a redis123 CONFIG SET maxclients 20000
+```
+
+---
+
+#### Alternative Solutions (สำหรับอนาคต)
+
+1. **Redis Cluster:** Sharding connections across nodes
+2. **HTTP Long Polling:** Stateless, ไม่ต้อง hold connection
+3. **WebSocket Gateway:** Single connection per event, server-side filtering
+4. **Kafka Consumer Groups:** Each SSE handler consumes from partition
+
+---
+
+#### บทเรียน
+
+1. **Connection limit vs Broadcast storm** — ต้องเลือก trade-off
+2. **Per-User = O(n) connections, O(1) messages per publish**
+3. **Per-Event = O(1) connections, O(n) messages per publish**
+4. **At scale, O(n) messages ร้ายแรงกว่า O(n) connections**
+5. **Test at actual scale** — ปัญหาบางอย่างเห็นได้เฉพาะที่ 10K users
