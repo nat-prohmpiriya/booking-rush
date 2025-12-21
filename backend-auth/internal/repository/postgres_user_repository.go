@@ -23,7 +23,7 @@ func NewPostgresUserRepository(pool *pgxpool.Pool) *PostgresUserRepository {
 // Create creates a new user
 func (r *PostgresUserRepository) Create(ctx context.Context, user *domain.User) error {
 	query := `
-		INSERT INTO users (id, email, password_hash, name, role, tenant_id, is_active, created_at, updated_at)
+		INSERT INTO users (id, email, password_hash, first_name, role, tenant_id, is_active, created_at, updated_at)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 	`
 	// Convert empty tenant_id to nil for NULL in database
@@ -49,7 +49,7 @@ func (r *PostgresUserRepository) Create(ctx context.Context, user *domain.User) 
 // GetByID retrieves a user by ID
 func (r *PostgresUserRepository) GetByID(ctx context.Context, id string) (*domain.User, error) {
 	query := `
-		SELECT id, email, password_hash, name, role, COALESCE(tenant_id::text, '') as tenant_id, COALESCE(stripe_customer_id, '') as stripe_customer_id, is_active, created_at, updated_at
+		SELECT id, email, password_hash, COALESCE(first_name, '') as first_name, role, COALESCE(tenant_id::text, '') as tenant_id, COALESCE(stripe_customer_id, '') as stripe_customer_id, is_active, created_at, updated_at
 		FROM users
 		WHERE id = $1
 	`
@@ -78,7 +78,7 @@ func (r *PostgresUserRepository) GetByID(ctx context.Context, id string) (*domai
 // GetByEmail retrieves a user by email
 func (r *PostgresUserRepository) GetByEmail(ctx context.Context, email string) (*domain.User, error) {
 	query := `
-		SELECT id, email, password_hash, name, role, COALESCE(tenant_id::text, '') as tenant_id, COALESCE(stripe_customer_id, '') as stripe_customer_id, is_active, created_at, updated_at
+		SELECT id, email, password_hash, COALESCE(first_name, '') as first_name, role, COALESCE(tenant_id::text, '') as tenant_id, COALESCE(stripe_customer_id, '') as stripe_customer_id, is_active, created_at, updated_at
 		FROM users
 		WHERE email = $1
 	`
@@ -108,7 +108,7 @@ func (r *PostgresUserRepository) GetByEmail(ctx context.Context, email string) (
 func (r *PostgresUserRepository) Update(ctx context.Context, user *domain.User) error {
 	query := `
 		UPDATE users
-		SET email = $2, password_hash = $3, name = $4, role = $5, tenant_id = $6, stripe_customer_id = $7, is_active = $8, updated_at = $9
+		SET email = $2, password_hash = $3, first_name = $4, role = $5, tenant_id = $6, stripe_customer_id = $7, is_active = $8, updated_at = $9
 		WHERE id = $1
 	`
 	user.UpdatedAt = time.Now()
