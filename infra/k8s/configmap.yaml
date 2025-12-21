@@ -49,6 +49,28 @@ data:
   PAYMENT_DATABASE_CONN_MAX_LIFETIME: "1h"
   PAYMENT_DATABASE_CONN_MAX_IDLE_TIME: "30m"
 
+  # Auth Database (for auth-service using AUTH_DATABASE_*)
+  AUTH_DATABASE_HOST: "booking-rush-pg-postgresql.booking-rush.svc.cluster.local"
+  AUTH_DATABASE_PORT: "5432"
+  AUTH_DATABASE_USER: "postgres"
+  AUTH_DATABASE_DBNAME: "booking_rush"
+  AUTH_DATABASE_SSLMODE: "disable"
+  AUTH_DATABASE_MAX_OPEN_CONNS: "10"
+  AUTH_DATABASE_MAX_IDLE_CONNS: "5"
+  AUTH_DATABASE_CONN_MAX_LIFETIME: "1h"
+  AUTH_DATABASE_CONN_MAX_IDLE_TIME: "30m"
+
+  # Ticket Database (for ticket-service using TICKET_DATABASE_*)
+  TICKET_DATABASE_HOST: "booking-rush-pg-postgresql.booking-rush.svc.cluster.local"
+  TICKET_DATABASE_PORT: "5432"
+  TICKET_DATABASE_USER: "postgres"
+  TICKET_DATABASE_DBNAME: "booking_rush"
+  TICKET_DATABASE_SSLMODE: "disable"
+  TICKET_DATABASE_MAX_OPEN_CONNS: "10"
+  TICKET_DATABASE_MAX_IDLE_CONNS: "5"
+  TICKET_DATABASE_CONN_MAX_LIFETIME: "1h"
+  TICKET_DATABASE_CONN_MAX_IDLE_TIME: "30m"
+
   # Redis
   REDIS_HOST: "booking-rush-redis-master.booking-rush.svc.cluster.local"
   REDIS_PORT: "6379"
