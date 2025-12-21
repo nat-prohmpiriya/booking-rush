@@ -19,7 +19,7 @@ spec:
         - name: ghcr-secret
       containers:
         - name: auth-service
-          image: ghcr.io/nat-prohmpiriya/booking-rush/auth:latest
+          image: ghcr.io/nat-prohmpiriya/booking-rush/auth-service:latest
           imagePullPolicy: Always
           ports:
             - containerPort: 8081

@@ -19,7 +19,7 @@ spec:
         - name: ghcr-secret
       containers:
         - name: booking-service
-          image: ghcr.io/nat-prohmpiriya/booking-rush/booking:latest
+          image: ghcr.io/nat-prohmpiriya/booking-rush/booking-service:latest
           imagePullPolicy: Always
           ports:
             - containerPort: 8083
