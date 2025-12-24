@@ -3,6 +3,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { MongooseModule } from '@nestjs/mongoose';
 import configuration from './config/configuration';
 import { HealthModule } from './modules/health/health.module';
+import { NotificationModule } from './modules/notification/notification.module';
 
 @Module({
   imports: [
@@ -23,6 +24,9 @@ import { HealthModule } from './modules/health/health.module';
 
     // Health checks
     HealthModule,
+
+    // Notification
+    NotificationModule,
   ],
   controllers: [],
   providers: [],
