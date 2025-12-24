@@ -105,6 +105,24 @@ services:
       - booking-rush-local
 
   # ---------------------------------------------------------------------------
+  # MongoDB - Document database for notifications
+  # ---------------------------------------------------------------------------
+  mongodb:
+    image: mongo:7
+    container_name: booking-rush-mongodb
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb-data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - booking-rush-local
+
+  # ---------------------------------------------------------------------------
   # Redpanda Console - Web UI for Kafka management
   # ---------------------------------------------------------------------------
   redpanda-console:
@@ -134,6 +152,7 @@ volumes:
   redis-data:
   redis-insight-data:
   redpanda-data:
+  mongodb-data:
 
 networks:
   booking-rush-local:

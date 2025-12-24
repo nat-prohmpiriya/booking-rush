@@ -114,6 +114,33 @@ services:
     networks:
       - booking-rush-local
 
+  notification:
+    build:
+      context: ./backend-notification
+      dockerfile: Dockerfile
+    container_name: booking-rush-notification
+    ports:
+      - "8085:8085"
+    environment:
+      - PORT=8085
+      - MONGODB_URI=mongodb://mongodb:27017/booking_rush_notifications
+      - KAFKA_BROKERS=redpanda:9092
+      - RESEND_API_KEY=${RESEND_API_KEY:-}
+      - FROM_EMAIL=${FROM_EMAIL:-Booking Rush <onboarding@resend.dev>}
+    env_file:
+      - .env.local
+    depends_on:
+      - redpanda
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8085/api/v1/health/live"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+    networks:
+      - booking-rush-local
+
   frontend:
     build:
       context: ./frontend-web
