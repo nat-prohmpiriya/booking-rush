@@ -60,31 +60,32 @@ export function StickyCheckout({
   }
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 border-t border-[#1a1a1a] bg-[#0a0a0a]/95 backdrop-blur-lg z-50">
+    <div className="fixed bottom-0 left-0 right-0 border-t border-[#1a1a1a] bg-[#0a0a0a]/95 backdrop-blur-lg z-50" data-testid="sticky-checkout">
       <div className="container mx-auto px-4 py-4">
         <div className="flex items-center justify-between max-w-4xl mx-auto">
           <div className="flex items-center gap-6">
             <div>
               <p className="text-sm text-muted-foreground">Total</p>
-              <p className="text-3xl font-bold text-[#d4af37]">฿{totalPrice.toLocaleString()}</p>
+              <p className="text-3xl font-bold text-[#d4af37]" data-testid="sticky-checkout-total">฿{totalPrice.toLocaleString()}</p>
             </div>
             {totalTickets > 0 && isSaleOpen && !isEventEnded && (
-              <div className="hidden md:block text-sm text-muted-foreground">
+              <div className="hidden md:block text-sm text-muted-foreground" data-testid="sticky-checkout-ticket-count">
                 {totalTickets} {totalTickets === 1 ? "ticket" : "tickets"} selected
               </div>
             )}
             {getStatusMessage() && (
-              <div className="hidden md:block text-sm text-amber-400">
+              <div className="hidden md:block text-sm text-amber-400" data-testid="sticky-checkout-status-message">
                 {getStatusMessage()}
               </div>
             )}
           </div>
 
-          <Link href={buildQueueUrl()}>
+          <Link href={buildQueueUrl()} data-testid="sticky-checkout-link">
             <Button
               size="lg"
               disabled={isDisabled}
               className="bg-[#d4af37] hover:bg-[#d4af37]/90 text-black font-semibold px-8 h-12 disabled:bg-zinc-600 disabled:text-zinc-400"
+              data-testid="sticky-checkout-button"
             >
               <ShoppingCart className="w-5 h-5 mr-2" />
               {getButtonText()}

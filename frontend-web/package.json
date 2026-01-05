@@ -6,7 +6,11 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "cy:open": "cypress open",
+    "cy:run": "cypress run",
+    "test:e2e": "cypress run",
+    "test:e2e:headed": "cypress run --headed"
   },
   "dependencies": {
     "@radix-ui/react-accordion": "^1.2.12",
@@ -60,11 +64,13 @@
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
+    "@testing-library/cypress": "^10.1.0",
     "@types/jest": "^30.0.0",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "axios-mock-adapter": "^2.1.0",
+    "cypress": "^15.8.1",
     "eslint": "^9",
     "eslint-config-next": "16.0.8",
     "tailwindcss": "^4",

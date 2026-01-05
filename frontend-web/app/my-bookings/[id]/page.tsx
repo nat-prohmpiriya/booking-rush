@@ -265,7 +265,7 @@ export default function BookingDetailPage() {
   const isCancelled = booking.status === "cancelled" || booking.status === "expired"
 
   return (
-    <main className="min-h-screen bg-background">
+    <main className="min-h-screen bg-background" data-testid="booking-detail-page">
       <Header />
 
       <div className="container mx-auto px-4 lg:px-8 pt-24 pb-16 max-w-3xl">
@@ -283,9 +283,9 @@ export default function BookingDetailPage() {
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
               <p className="text-sm text-muted-foreground mb-1">Booking Reference</p>
-              <h1 className="text-2xl font-bold font-mono text-primary">{reference}</h1>
+              <h1 className="text-2xl font-bold font-mono text-primary" data-testid="booking-detail-reference">{reference}</h1>
             </div>
-            <Badge className={`${statusConfig.color} border text-sm px-4 py-2`}>
+            <Badge className={`${statusConfig.color} border text-sm px-4 py-2`} data-testid="booking-detail-status">
               <StatusIcon className="w-4 h-4 mr-2" />
               {statusConfig.label}
             </Badge>
@@ -298,7 +298,7 @@ export default function BookingDetailPage() {
 
           {/* E-Ticket Section (only for confirmed bookings) */}
           {isConfirmed && (
-            <Card className="p-6 bg-zinc-900/50 border-primary/30 overflow-hidden">
+            <Card className="p-6 bg-zinc-900/50 border-primary/30 overflow-hidden" data-testid="booking-detail-eticket">
               <div className="flex flex-col items-center space-y-6">
                 <div className="flex items-center gap-2 text-primary">
                   <QrCode className="w-5 h-5" />
@@ -370,7 +370,7 @@ export default function BookingDetailPage() {
           )}
 
           {/* Event Info */}
-          <Card className="overflow-hidden bg-zinc-900/50 border-border/50">
+          <Card className="overflow-hidden bg-zinc-900/50 border-border/50" data-testid="booking-detail-event-card">
             <div className="flex flex-col sm:flex-row">
               {/* Event Image */}
               <div className="sm:w-48 h-48 sm:h-auto shrink-0">
@@ -432,7 +432,7 @@ export default function BookingDetailPage() {
           </Card>
 
           {/* Ticket Info */}
-          <Card className="p-6 bg-zinc-900/50 border-border/50">
+          <Card className="p-6 bg-zinc-900/50 border-border/50" data-testid="booking-detail-ticket-info">
             <h3 className="font-semibold mb-4 flex items-center gap-2">
               <Ticket className="w-5 h-5 text-primary" />
               Ticket Details
@@ -458,7 +458,7 @@ export default function BookingDetailPage() {
           </Card>
 
           {/* Timeline */}
-          <Card className="p-6 bg-zinc-900/50 border-border/50">
+          <Card className="p-6 bg-zinc-900/50 border-border/50" data-testid="booking-detail-timeline">
             <h3 className="font-semibold mb-4 flex items-center gap-2">
               <History className="w-5 h-5 text-primary" />
               Booking Timeline
@@ -508,11 +508,11 @@ export default function BookingDetailPage() {
           <div className="flex flex-col sm:flex-row gap-4">
             {isConfirmed && (
               <>
-                <Button className="flex-1 bg-primary hover:bg-primary/90 text-primary-foreground">
+                <Button className="flex-1 bg-primary hover:bg-primary/90 text-primary-foreground" data-testid="booking-detail-download-button">
                   <Download className="w-4 h-4 mr-2" />
                   Download E-Ticket
                 </Button>
-                <Button variant="outline" className="flex-1">
+                <Button variant="outline" className="flex-1" data-testid="booking-detail-wallet-button">
                   <Wallet className="w-4 h-4 mr-2" />
                   Add to Wallet
                 </Button>
@@ -522,7 +522,7 @@ export default function BookingDetailPage() {
             {isPending && (
               <>
                 <Link href={`/checkout?booking_id=${booking.id}`} className="flex-1">
-                  <Button className="w-full bg-primary hover:bg-primary/90 text-primary-foreground">
+                  <Button className="w-full bg-primary hover:bg-primary/90 text-primary-foreground" data-testid="booking-detail-payment-button">
                     <CreditCard className="w-4 h-4 mr-2" />
                     Complete Payment
                   </Button>
@@ -531,6 +531,7 @@ export default function BookingDetailPage() {
                   variant="outline"
                   className="flex-1 border-red-500/50 text-red-400 hover:bg-red-500/10"
                   onClick={() => setShowCancelDialog(true)}
+                  data-testid="booking-detail-cancel-button"
                 >
                   <XCircle className="w-4 h-4 mr-2" />
                   Cancel Booking

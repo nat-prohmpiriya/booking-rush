@@ -118,7 +118,7 @@ export default function EventDetailPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-white">
+    <div className="min-h-screen bg-[#0a0a0a] text-white" data-testid="event-detail-page">
       <Header />
       <EventHero image={event.heroImage || event.image} />
 
@@ -126,8 +126,8 @@ export default function EventDetailPage() {
         <div className="relative -mt-32 z-10">
           <div className="max-w-4xl mx-auto space-y-8">
             <div>
-              <h1 className="text-5xl md:text-6xl font-bold mb-4 text-balance">{event.title}</h1>
-              <p className="text-xl text-[#d4af37] text-pretty">{event.subtitle}</p>
+              <h1 className="text-5xl md:text-6xl font-bold mb-4 text-balance" data-testid="event-detail-title">{event.title}</h1>
+              <p className="text-xl text-[#d4af37] text-pretty" data-testid="event-detail-subtitle">{event.subtitle}</p>
             </div>
 
             <CountdownTimer
@@ -139,9 +139,9 @@ export default function EventDetailPage() {
 
             {/* Show selector if multiple shows */}
             {shows.length > 1 && (
-              <div className="bg-zinc-900/50 p-6 rounded-xl">
+              <div className="bg-zinc-900/50 p-6 rounded-xl" data-testid="event-detail-show-selector">
                 <h3 className="text-lg font-semibold mb-4">Select Show</h3>
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4" data-testid="event-detail-show-grid">
                   {shows.map((show) => (
                     <Button
                       key={show.id}
@@ -155,6 +155,7 @@ export default function EventDetailPage() {
                           ? "border-[#d4af37] bg-[#d4af37]/10 border-2"
                           : "border-zinc-700 hover:border-zinc-500"
                       }`}
+                      data-testid={`event-detail-show-${show.id}`}
                     >
                       <div className="text-sm text-zinc-400">{show.show_date}</div>
                       <div className="font-medium">{show.name}</div>

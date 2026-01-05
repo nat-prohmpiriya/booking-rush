@@ -119,9 +119,9 @@ export default function RegisterPage() {
           </h1>
           <p className="text-muted-foreground text-center mb-8">Join us and start booking amazing events</p>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-4" data-testid="register-form">
             {authError && (
-              <div className="p-3 text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-lg">
+              <div className="p-3 text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-lg" data-testid="register-error">
                 {authError}
               </div>
             )}
@@ -136,11 +136,12 @@ export default function RegisterPage() {
                 placeholder="John Doe"
                 value={formData.name}
                 onChange={handleChange}
+                data-testid="register-name-input"
                 className={`bg-secondary border-border focus:border-primary transition-all ${
                   errors.name ? "border-destructive focus:border-destructive" : ""
                 } ${success.name ? "border-success focus:border-success" : ""}`}
               />
-              {errors.name && <p className="text-sm text-destructive">{errors.name}</p>}
+              {errors.name && <p className="text-sm text-destructive" data-testid="register-name-error">{errors.name}</p>}
             </div>
 
             <div className="space-y-2">
@@ -154,11 +155,12 @@ export default function RegisterPage() {
                 placeholder="you@example.com"
                 value={formData.email}
                 onChange={handleChange}
+                data-testid="register-email-input"
                 className={`bg-secondary border-border focus:border-primary transition-all ${
                   errors.email ? "border-destructive focus:border-destructive" : ""
                 } ${success.email ? "border-success focus:border-success" : ""}`}
               />
-              {errors.email && <p className="text-sm text-destructive">{errors.email}</p>}
+              {errors.email && <p className="text-sm text-destructive" data-testid="register-email-error">{errors.email}</p>}
             </div>
 
             <div className="space-y-2">
@@ -173,6 +175,7 @@ export default function RegisterPage() {
                   placeholder="••••••••"
                   value={formData.password}
                   onChange={handleChange}
+                  data-testid="register-password-input"
                   className={`bg-secondary border-border focus:border-primary transition-all pr-10 ${
                     errors.password ? "border-destructive focus:border-destructive" : ""
                   } ${success.password ? "border-success focus:border-success" : ""}`}
@@ -182,12 +185,13 @@ export default function RegisterPage() {
                   variant="ghost"
                   size="icon"
                   onClick={() => setShowPassword(!showPassword)}
+                  data-testid="register-toggle-password"
                   className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8 text-muted-foreground hover:text-foreground"
                 >
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </Button>
               </div>
-              {errors.password && <p className="text-sm text-destructive">{errors.password}</p>}
+              {errors.password && <p className="text-sm text-destructive" data-testid="register-password-error">{errors.password}</p>}
               <p className="text-xs text-muted-foreground">
                 Min 8 chars, uppercase, lowercase, number, special character
               </p>
@@ -205,6 +209,7 @@ export default function RegisterPage() {
                   placeholder="••••••••"
                   value={formData.confirmPassword}
                   onChange={handleChange}
+                  data-testid="register-confirm-password-input"
                   className={`bg-secondary border-border focus:border-primary transition-all pr-10 ${
                     errors.confirmPassword ? "border-destructive focus:border-destructive" : ""
                   } ${success.confirmPassword ? "border-success focus:border-success" : ""}`}
@@ -214,17 +219,19 @@ export default function RegisterPage() {
                   variant="ghost"
                   size="icon"
                   onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  data-testid="register-toggle-confirm-password"
                   className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8 text-muted-foreground hover:text-foreground"
                 >
                   {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </Button>
               </div>
-              {errors.confirmPassword && <p className="text-sm text-destructive">{errors.confirmPassword}</p>}
+              {errors.confirmPassword && <p className="text-sm text-destructive" data-testid="register-confirm-password-error">{errors.confirmPassword}</p>}
             </div>
 
             <Button
               type="submit"
               disabled={isLoading}
+              data-testid="register-submit-button"
               className="w-full bg-linear-to-r from-primary via-primary/90 to-primary/80 hover:from-primary/90 hover:via-primary/80 hover:to-primary/70 text-primary-foreground font-semibold shadow-lg shadow-primary/20 transition-all disabled:opacity-50"
             >
               {isLoading ? "Creating Account..." : "Create Account"}
@@ -244,7 +251,7 @@ export default function RegisterPage() {
 
           <p className="text-center text-sm text-muted-foreground mt-6">
             Already have an account?{" "}
-            <Link href="/login" className="text-primary hover:text-primary/80 font-semibold transition-colors">
+            <Link href="/login" className="text-primary hover:text-primary/80 font-semibold transition-colors" data-testid="register-login-link">
               Sign in
             </Link>
           </p>

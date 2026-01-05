@@ -14,39 +14,40 @@ interface EventCardProps {
 
 export function EventCard({ id, title, venue, date, price, image }: EventCardProps) {
   return (
-    <Link href={`/events/${id}`} className="block">
-      <Card className="group overflow-hidden border-0 transition-all duration-300 cursor-pointer" style={{ background: 'linear-gradient(to top right, #0a0a0a 0%, #1a1a1a 50%, #2a2a2a 100%)' }}>
+    <Link href={`/events/${id}`} className="block" data-testid={`event-card-${id}`}>
+      <Card className="group overflow-hidden border-0 transition-all duration-300 cursor-pointer" style={{ background: 'linear-gradient(to top right, #0a0a0a 0%, #1a1a1a 50%, #2a2a2a 100%)' }} data-testid="event-card">
         <div className="relative h-48 lg:h-56 overflow-hidden">
           <img
             src={image || "/placeholder.svg"}
             alt={title}
             className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+            data-testid="event-card-image"
           />
-          <div className="absolute top-3 right-3 glass px-3 py-1 rounded-full">
+          <div className="absolute top-3 right-3 glass px-3 py-1 rounded-full" data-testid="event-card-date-badge">
             <div className="flex items-center gap-1 text-primary text-sm font-semibold">
               <Calendar className="h-3 w-3" />
-              <span>{date}</span>
+              <span data-testid="event-card-date">{date}</span>
             </div>
           </div>
         </div>
         <CardContent className="p-5 space-y-4">
           <div className="space-y-2">
-            <h3 className="text-xl font-bold text-primary text-balance line-clamp-2">
+            <h3 className="text-xl font-bold text-primary text-balance line-clamp-2" data-testid="event-card-title">
               {title}
             </h3>
             <div className="flex items-center gap-2 text-primary text-sm">
               <MapPin className="h-4 w-4" />
-              <span className="line-clamp-1">{venue}</span>
+              <span className="line-clamp-1" data-testid="event-card-venue">{venue}</span>
             </div>
           </div>
           <div className="flex items-center justify-between pt-2 border-t border-primary/30">
             <div>
               <p className="text-xs text-primary uppercase">From</p>
-              <p className="text-2xl font-bold text-primary">
+              <p className="text-2xl font-bold text-primary" data-testid="event-card-price">
                 ฿{price.toLocaleString()}
               </p>
             </div>
-            <Button className="bg-primary hover:bg-amber-400 text-black font-semibold uppercase">
+            <Button className="bg-primary hover:bg-amber-400 text-black font-semibold uppercase" data-testid="event-card-book-button">
               Book Now
             </Button>
           </div>

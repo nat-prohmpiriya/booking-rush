@@ -220,6 +220,21 @@ export interface CreatePaymentIntentRequest {
   booking_id: string
   amount: number
   currency?: string
+  // Metadata for notification service (enriched data)
+  metadata?: {
+    user_email?: string
+    event_id?: string
+    event_name?: string
+    show_id?: string
+    show_date?: string
+    zone_id?: string
+    zone_name?: string
+    quantity?: number
+    unit_price?: number
+    confirmation_code?: string
+    venue_name?: string
+    venue_address?: string
+  }
 }
 
 export interface PaymentIntentResponse {
@@ -274,4 +289,73 @@ export interface LeaveQueueRequest {
 export interface LeaveQueueResponse {
   success: boolean
   message: string
+}
+
+// Analytics types
+export interface DashboardOverviewResponse {
+  total_revenue: number
+  total_bookings: number
+  total_tickets_sold: number
+  active_events: number
+  revenue_change_percent: number
+  bookings_change_percent: number
+}
+
+export interface SalesByPeriod {
+  period: string
+  revenue: number
+  bookings: number
+  tickets_sold: number
+}
+
+export interface SalesReportResponse {
+  start_date: string
+  end_date: string
+  total_revenue: number
+  total_bookings: number
+  total_tickets_sold: number
+  data: SalesByPeriod[]
+}
+
+export interface TopEventResponse {
+  event_id: string
+  event_name: string
+  total_revenue: number
+  total_bookings: number
+  total_tickets: number
+}
+
+export interface RecentBookingResponse {
+  booking_id: string
+  event_name: string
+  zone_name: string
+  quantity: number
+  total_price: number
+  status: string
+  created_at: string
+}
+
+export interface EventStatsResponse {
+  event_id: string
+  event_name: string
+  total_shows: number
+  total_bookings: number
+  total_tickets_sold: number
+  total_revenue: number
+  average_ticket_price: number
+  shows: ShowStatsResponse[]
+}
+
+export interface ShowStatsResponse {
+  show_id: string
+  show_date: string
+  total_bookings: number
+  total_tickets: number
+  revenue: number
+}
+
+export interface SalesReportFilter {
+  start_date?: string
+  end_date?: string
+  period?: 'day' | 'week' | 'month'
 }

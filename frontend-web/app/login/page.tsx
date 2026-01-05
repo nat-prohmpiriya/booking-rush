@@ -116,9 +116,9 @@ export default function LoginPage() {
           </h1>
           <p className="text-muted-foreground text-center mb-8">Sign in to book your next experience</p>
 
-          <form onSubmit={handleSubmit} className="space-y-5">
+          <form onSubmit={handleSubmit} className="space-y-5" data-testid="login-form">
             {authError && (
-              <div className="p-3 text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-lg">
+              <div className="p-3 text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-lg" data-testid="login-error">
                 {authError}
               </div>
             )}
@@ -133,11 +133,12 @@ export default function LoginPage() {
                 placeholder="you@example.com"
                 value={formData.email}
                 onChange={handleChange}
+                data-testid="login-email-input"
                 className={`bg-secondary border-border focus:border-primary transition-all ${
                   errors.email ? "border-destructive focus:border-destructive" : ""
                 } ${success.email ? "border-success focus:border-success" : ""}`}
               />
-              {errors.email && <p className="text-sm text-destructive">{errors.email}</p>}
+              {errors.email && <p className="text-sm text-destructive" data-testid="login-email-error">{errors.email}</p>}
             </div>
 
             <div className="space-y-2">
@@ -152,6 +153,7 @@ export default function LoginPage() {
                   placeholder="••••••••"
                   value={formData.password}
                   onChange={handleChange}
+                  data-testid="login-password-input"
                   className={`bg-secondary border-border focus:border-primary transition-all pr-10 ${
                     errors.password ? "border-destructive focus:border-destructive" : ""
                   } ${success.password ? "border-success focus:border-success" : ""}`}
@@ -161,12 +163,13 @@ export default function LoginPage() {
                   variant="ghost"
                   size="icon"
                   onClick={() => setShowPassword(!showPassword)}
+                  data-testid="login-toggle-password"
                   className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8 text-muted-foreground hover:text-foreground"
                 >
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </Button>
               </div>
-              {errors.password && <p className="text-sm text-destructive">{errors.password}</p>}
+              {errors.password && <p className="text-sm text-destructive" data-testid="login-password-error">{errors.password}</p>}
             </div>
 
             <div className="flex items-center justify-between">
@@ -175,12 +178,13 @@ export default function LoginPage() {
                   id="remember"
                   checked={formData.rememberMe}
                   onCheckedChange={(checked) => setFormData((prev) => ({ ...prev, rememberMe: checked as boolean }))}
+                  data-testid="login-remember-checkbox"
                 />
                 <Label htmlFor="remember" className="text-sm text-muted-foreground cursor-pointer">
                   Remember me
                 </Label>
               </div>
-              <Link href="/forgot-password" className="text-sm text-primary hover:text-primary/80 transition-colors">
+              <Link href="/forgot-password" className="text-sm text-primary hover:text-primary/80 transition-colors" data-testid="login-forgot-password-link">
                 Forgot password?
               </Link>
             </div>
@@ -188,6 +192,7 @@ export default function LoginPage() {
             <Button
               type="submit"
               disabled={isLoading}
+              data-testid="login-submit-button"
               className="w-full bg-linear-to-r from-primary via-primary/90 to-primary/80 hover:from-primary/90 hover:via-primary/80 hover:to-primary/70 text-primary-foreground font-semibold shadow-lg shadow-primary/20 transition-all disabled:opacity-50"
             >
               {isLoading ? "Signing in..." : "Sign In"}
@@ -207,7 +212,7 @@ export default function LoginPage() {
 
           <p className="text-center text-sm text-muted-foreground mt-6">
             Don't have an account?{" "}
-            <Link href="/register" className="text-primary hover:text-primary/80 font-semibold transition-colors">
+            <Link href="/register" className="text-primary hover:text-primary/80 font-semibold transition-colors" data-testid="login-register-link">
               Create account
             </Link>
           </p>

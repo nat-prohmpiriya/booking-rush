@@ -902,77 +902,128 @@
 
 ## [ ] Phase 5: NestJS Services
 
-**Goal:** Implement Notification and Analytics services with NestJS + MongoDB
+**Goal:** Implement Notification Service with NestJS + MongoDB + Resend (Email)
 
-### [ ]  P5-01: Notification Service - Project Setup
+### [ ] P5-01: Notification Service - Project Setup
 | Field | Value |
 |-------|-------|
 | **Description** | Setup NestJS project for Notification Service |
-| **Technical Context** | `backend-notification-service/` |
-| **Acceptance Criteria** | - NestJS project initialized<br>- MongoDB connected<br>- Kafka consumer configured<br>- Service starts on :8084 |
+| **Technical Context** | `backend-notification/` |
+| **Acceptance Criteria** | - NestJS project initialized<br>- MongoDB connected<br>- Kafka consumer configured<br>- Service starts on :8085<br>- Health check endpoint works |
 
-- [ ] Initialize NestJS project
-- [ ] Setup MongoDB with Mongoose
-- [ ] Configure Kafka consumer
-- [ ] Create module structure
-- [ ] Add health check endpoint
-- [ ] Write tests
+- [ ] Initialize NestJS project with `nest new backend-notification`
+- [ ] Install dependencies: `@nestjs/mongoose`, `mongoose`, `kafkajs`, `@nestjs/microservices`, `@nestjs/config`
+- [ ] Setup MongoDB connection with Mongoose
+- [ ] Configure environment variables (MONGODB_URI, KAFKA_BROKERS, RESEND_API_KEY)
+- [ ] Create health check endpoint `/health`
+- [ ] Add to docker-compose.yml
+- [ ] Write basic tests
 
 ---
 
-### [ ]  P5-02: Notification Service - MongoDB Schemas
+### [ ] P5-02: Notification Service - MongoDB Schemas
 | Field | Value |
 |-------|-------|
 | **Description** | Create MongoDB schemas for notifications |
-| **Technical Context** | `backend-notification-service/src/schemas/` |
-| **Acceptance Criteria** | - `notifications` collection schema<br>- `notification_templates` collection schema<br>- Indexes created |
+| **Technical Context** | `backend-notification/src/modules/notification/schemas/` |
+| **Acceptance Criteria** | - `notifications` collection schema<br>- `notification_templates` collection schema<br>- Indexes created for query performance |
 
-- [ ] Create Notification schema
-- [ ] Create NotificationTemplate schema
-- [ ] Add required indexes
-- [ ] Seed default templates
+- [ ] Create Notification schema with fields:
+  - id, tenant_id, user_id, booking_id
+  - type: 'booking_confirmation' | 'e_ticket' | 'payment_receipt' | 'booking_expired'
+  - channel: 'email', recipient, subject, content (rendered HTML)
+  - status: 'pending' | 'sent' | 'failed' | 'retrying'
+  - retry_count, sent_at, error_message
+  - metadata: { event_name, show_date, zone_name, quantity, total_price, confirmation_code }
+  - timestamps
+- [ ] Create NotificationTemplate schema (name, subject, body, locale, is_active, version)
+- [ ] Add indexes: `{ tenant_id: 1, user_id: 1 }`, `{ booking_id: 1 }`, `{ status: 1, created_at: 1 }`
+- [ ] Add TTL index on created_at (90 days retention)
+- [ ] Seed default email templates (Thai + English)
 - [ ] Write tests
 
 ---
 
-### [ ]  P5-03: Notification Service - Email Module
+### [ ] P5-03: Notification Service - Email Module with Resend
 | Field | Value |
 |-------|-------|
-| **Description** | Implement email sending module |
-| **Technical Context** | `backend-notification-service/src/modules/email/` |
-| **Acceptance Criteria** | - Send emails via Nodemailer/SendGrid<br>- Support HTML templates (Handlebars)<br>- Retry on failure |
+| **Description** | Implement email sending module using Resend API |
+| **Technical Context** | `backend-notification/src/modules/email/` |
+| **Acceptance Criteria** | - Send emails via Resend API<br>- Support HTML templates (Handlebars)<br>- Retry on failure (3 attempts, exponential backoff)<br>- QR code generation for e-tickets |
 
-- [ ] Create EmailModule
-- [ ] Integrate Nodemailer or SendGrid
-- [ ] Implement Handlebars template rendering
-- [ ] Add retry logic
-- [ ] Write tests
+- [ ] Install: `resend`, `handlebars`, `qrcode`
+- [ ] Create EmailModule with ResendProvider
+- [ ] Implement Handlebars template rendering service
+- [ ] Create email templates:
+  - `booking-confirmation.hbs` - reservation created, countdown to pay
+  - `e-ticket.hbs` - QR code, event details, confirmation code, venue info
+  - `payment-receipt.hbs` - payment ID, amount, date, method
+  - `booking-expired.hbs` - expiry notice, link to rebook
+- [ ] Implement QR code generation for e-tickets (using `qrcode` package)
+- [ ] Add retry logic with exponential backoff (1s, 2s, 4s, max 3 attempts)
+- [ ] Write tests (mock Resend API)
 
 ---
 
-### [ ]  P5-04: Notification Service - Kafka Consumer
+### [ ] P5-04: Notification Service - Kafka Consumers
 | Field | Value |
 |-------|-------|
-| **Description** | Consume booking/payment events |
-| **Technical Context** | `backend-notification-service/src/modules/kafka/` |
-| **Acceptance Criteria** | - Consume `booking.created` → booking confirmation<br>- Consume `booking.confirmed` → e-ticket<br>- Consume `payment.success` → payment receipt<br>- Consume `booking.expired` → expiry notice |
+| **Description** | Consume booking/payment events from Kafka |
+| **Technical Context** | `backend-notification/src/modules/kafka/` |
+| **Acceptance Criteria** | - Consume `payment.success` → send e-ticket + receipt<br>- Consume `booking.expired` → send expiry notice<br>- Consume `booking.cancelled` → send cancellation notice<br>- Idempotent processing (no duplicate emails) |
 
-- [ ] Create KafkaModule
-- [ ] Handle booking.created event
-- [ ] Handle booking.confirmed event
-- [ ] Handle payment.success event
-- [ ] Handle payment.failed event
-- [ ] Handle booking.expired event
+- [ ] Create KafkaModule with consumer configuration
+- [ ] Create consumer group: `notification-service`
+- [ ] Implement consumers for topics:
+  - `payment.success` → send e-ticket email with QR code + payment receipt
+  - `booking.expired` → send expiry notice with rebook link
+  - `booking.cancelled` → send cancellation confirmation
+- [ ] Add idempotency check (query notification by booking_id + type before sending)
+- [ ] Save notification record to MongoDB after sending (success or failure)
+- [ ] Handle consumer errors - log and continue (don't block queue)
+- [ ] Write integration tests with embedded Kafka
+
+---
+
+### [ ] P5-05: Notification Service - REST API (Optional)
+| Field | Value |
+|-------|-------|
+| **Description** | REST endpoints for notification management |
+| **Technical Context** | `backend-notification/src/modules/notification/` |
+| **Acceptance Criteria** | - `GET /notifications` list user notifications<br>- `POST /notifications/:id/resend` retry failed notification |
+
+- [ ] Create NotificationController
+- [ ] Implement `GET /notifications` (list by user_id from JWT, paginated)
+- [ ] Implement `GET /notifications/:id` (get single notification detail)
+- [ ] Implement `POST /notifications/:id/resend` (retry failed notification, admin only)
+- [ ] Add JWT authentication middleware (validate token from Auth Service)
 - [ ] Write tests
 
 ---
 
-### [ ]  P5-05: Analytics Service - Project Setup
+### [ ] P5-06: Notification Service - Docker & Deployment
+| Field | Value |
+|-------|-------|
+| **Description** | Containerize and deploy notification service |
+| **Technical Context** | `backend-notification/Dockerfile`, `docker-compose.yml`, `infra/k8s/` |
+| **Acceptance Criteria** | - Dockerfile created (multi-stage build)<br>- Added to docker-compose<br>- Health check integrated<br>- K8s manifests created |
+
+- [ ] Create multi-stage Dockerfile (node:20-alpine)
+- [ ] Add to docker-compose.yml with dependencies (mongodb, kafka)
+- [ ] Configure environment variables for dev/prod
+- [ ] Update API Gateway to proxy `/api/v1/notifications/*` routes
+- [ ] Create K8s deployment manifests (Deployment, Service, ConfigMap)
+- [ ] Add to CI/CD pipeline (GitHub Actions)
+- [ ] Test deployment locally and on cluster
+
+---
+
+### [ ] P5-07: Analytics Service - Project Setup
 | Field | Value |
 |-------|-------|
 | **Description** | Setup NestJS project for Analytics Service |
-| **Technical Context** | `backend-analytics-service/` |
-| **Acceptance Criteria** | - NestJS project initialized<br>- MongoDB connected<br>- Kafka consumer configured<br>- Service starts on :8085 |
+| **Technical Context** | `backend-analytics/` |
+| **Acceptance Criteria** | - NestJS project initialized<br>- MongoDB connected<br>- Kafka consumer configured<br>- Service starts on :8086 |
 
 - [ ] Initialize NestJS project
 - [ ] Setup MongoDB with Mongoose
@@ -982,11 +1033,11 @@
 
 ---
 
-### [ ]  P5-06: Analytics Service - MongoDB Schemas
+### [ ] P5-08: Analytics Service - MongoDB Schemas
 | Field | Value |
 |-------|-------|
 | **Description** | Create MongoDB schemas for analytics |
-| **Technical Context** | `backend-analytics-service/src/schemas/` |
+| **Technical Context** | `backend-analytics/src/schemas/` |
 | **Acceptance Criteria** | - `events_raw` collection (raw event log)<br>- `analytics_daily` collection (aggregated)<br>- `analytics_realtime` collection (TTL index) |
 
 - [ ] Create EventsRaw schema
@@ -997,11 +1048,11 @@
 
 ---
 
-### [ ]  P5-07: Analytics Service - Event Aggregation
+### [ ] P5-09: Analytics Service - Event Aggregation
 | Field | Value |
 |-------|-------|
 | **Description** | Consume events and aggregate metrics |
-| **Technical Context** | `backend-analytics-service/src/modules/aggregation/` |
+| **Technical Context** | `backend-analytics/src/modules/aggregation/` |
 | **Acceptance Criteria** | - Consume all booking/payment events<br>- Store raw events<br>- Update daily aggregations<br>- Update real-time stats |
 
 - [ ] Create AggregationModule
@@ -1012,11 +1063,11 @@
 
 ---
 
-### [ ]  P5-08: Analytics Service - REST API
+### [ ] P5-10: Analytics Service - REST API
 | Field | Value |
 |-------|-------|
 | **Description** | Implement REST API for dashboard |
-| **Technical Context** | `backend-analytics-service/src/modules/api/` |
+| **Technical Context** | `backend-analytics/src/modules/api/` |
 | **Acceptance Criteria** | - `GET /analytics/events/:id/realtime` returns real-time stats<br>- `GET /analytics/events/:id/daily` returns daily stats<br>- `GET /analytics/dashboard` returns overview |
 
 - [ ] Create ApiModule
@@ -1027,7 +1078,7 @@
 
 ---
 
-**Phase 5 Milestone:** NestJS services (Notification + Analytics)  with MongoDB
+**Phase 5 Milestone:** Notification Service operational (email with Resend), Analytics Service ready for dashboard
 
 ---
 
@@ -1696,13 +1747,13 @@
 | Phase 2: Core Booking | 14 | 14 |
 | Phase 3: Auth & Events | 14 | 14 |
 | Phase 4: Payment & Saga | 12 | 12 |
-| Phase 5: NestJS Services | 8 | 0 |
+| Phase 5: NestJS Services | 10 | 0 |
 | Phase 6: Virtual Queue | 7 | 6 |
 | Phase 7: Frontend | 11 | 11 |
 | Phase 8: Observability | 8 | 1 |
 | Phase 9: Production | 6 | 0 |
 | Phase 10: Admin UI | 8 | 0 |
-| **Total** | **101** | **70** |
+| **Total** | **103** | **70** |
 
 ---
 

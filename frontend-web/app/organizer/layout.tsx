@@ -24,11 +24,11 @@ const sidebarItems = [
     href: "/organizer/events",
     icon: Calendar,
   },
-  // {
-  //   title: "Analytics",
-  //   href: "/organizer/analytics",
-  //   icon: BarChart3,
-  // },
+  {
+    title: "Analytics",
+    href: "/organizer/analytics",
+    icon: BarChart3,
+  },
   // {
   //   title: "Settings",
   //   href: "/organizer/settings",

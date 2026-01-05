@@ -199,7 +199,7 @@ export default function EventsPage() {
   }
 
   return (
-    <main className="min-h-screen bg-background">
+    <main className="min-h-screen bg-background" data-testid="events-page">
       <Header />
 
       {/* Hero Section */}
@@ -237,6 +237,7 @@ export default function EventsPage() {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-12 pr-4 h-14 text-lg glass border-primary/30 focus:border-primary placeholder:text-muted-foreground/60"
+                data-testid="events-search-input"
               />
             </div>
           </div>
@@ -260,6 +261,7 @@ export default function EventsPage() {
               size="sm"
               onClick={() => setShowFilters(!showFilters)}
               className={`border-primary/50 ${showFilters ? "bg-primary/10 text-primary" : ""}`}
+              data-testid="events-filters-button"
             >
               <SlidersHorizontal className="h-4 w-4 mr-2" />
               Filters
@@ -267,7 +269,7 @@ export default function EventsPage() {
 
             {/* Sort Select */}
             <Select value={sortBy} onValueChange={setSortBy}>
-              <SelectTrigger className="w-40 border-primary/30">
+              <SelectTrigger className="w-40 border-primary/30" data-testid="events-sort-select">
                 <Filter className="h-4 w-4 mr-2" />
                 <SelectValue placeholder="Sort by" />
               </SelectTrigger>
@@ -286,6 +288,7 @@ export default function EventsPage() {
                 size="sm"
                 onClick={() => setViewMode("grid")}
                 className={viewMode === "grid" ? "bg-primary/20 text-primary" : "text-muted-foreground"}
+                data-testid="events-grid-view-button"
               >
                 <Grid3X3 className="h-4 w-4" />
               </Button>
@@ -294,6 +297,7 @@ export default function EventsPage() {
                 size="sm"
                 onClick={() => setViewMode("list")}
                 className={viewMode === "list" ? "bg-primary/20 text-primary" : "text-muted-foreground"}
+                data-testid="events-list-view-button"
               >
                 <List className="h-4 w-4" />
               </Button>
@@ -303,13 +307,13 @@ export default function EventsPage() {
 
         {/* Expandable Filters Panel */}
         {showFilters && (
-          <div className="glass rounded-xl p-6 mb-8 space-y-4 animate-in fade-in slide-in-from-top-2 duration-200">
+          <div className="glass rounded-xl p-6 mb-8 space-y-4 animate-in fade-in slide-in-from-top-2 duration-200" data-testid="events-filter-panel">
             <h3 className="font-semibold text-foreground">Filter by</h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               <div className="space-y-2">
                 <label className="text-sm text-muted-foreground">Category</label>
                 <Select value={categoryFilter} onValueChange={(value) => { setCategoryFilter(value); handleFilterChange(); }}>
-                  <SelectTrigger className="border-primary/30">
+                  <SelectTrigger className="border-primary/30" data-testid="events-category-filter">
                     <SelectValue placeholder="All Categories" />
                   </SelectTrigger>
                   <SelectContent>
@@ -324,7 +328,7 @@ export default function EventsPage() {
               <div className="space-y-2">
                 <label className="text-sm text-muted-foreground">Date Range</label>
                 <Select value={dateRangeFilter} onValueChange={(value) => { setDateRangeFilter(value); handleFilterChange(); }}>
-                  <SelectTrigger className="border-primary/30">
+                  <SelectTrigger className="border-primary/30" data-testid="events-date-filter">
                     <SelectValue placeholder="Any Date" />
                   </SelectTrigger>
                   <SelectContent>
@@ -339,7 +343,7 @@ export default function EventsPage() {
               <div className="space-y-2">
                 <label className="text-sm text-muted-foreground">Price Range</label>
                 <Select value={priceRangeFilter} onValueChange={(value) => { setPriceRangeFilter(value); handleFilterChange(); }}>
-                  <SelectTrigger className="border-primary/30">
+                  <SelectTrigger className="border-primary/30" data-testid="events-price-filter">
                     <SelectValue placeholder="Any Price" />
                   </SelectTrigger>
                   <SelectContent>
@@ -354,7 +358,7 @@ export default function EventsPage() {
               <div className="space-y-2">
                 <label className="text-sm text-muted-foreground">Location</label>
                 <Select value={locationFilter} onValueChange={(value) => { setLocationFilter(value); handleFilterChange(); }}>
-                  <SelectTrigger className="border-primary/30">
+                  <SelectTrigger className="border-primary/30" data-testid="events-location-filter">
                     <SelectValue placeholder="All Locations" />
                   </SelectTrigger>
                   <SelectContent>
@@ -368,7 +372,7 @@ export default function EventsPage() {
               </div>
             </div>
             <div className="flex justify-end gap-3 pt-2">
-              <Button variant="outline" size="sm" className="border-primary/50" onClick={clearAllFilters}>
+              <Button variant="outline" size="sm" className="border-primary/50" onClick={clearAllFilters} data-testid="events-clear-filters-button">
                 Clear All
               </Button>
               <Button size="sm" className="bg-linear-to-r from-primary to-amber-400 text-primary-foreground" onClick={() => setShowFilters(false)}>
@@ -396,7 +400,7 @@ export default function EventsPage() {
         ) : paginatedEvents.length > 0 ? (
           <>
             {viewMode === "grid" ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8" data-testid="events-grid">
                 {paginatedEvents.map((event) => (
                   <EventCard
                     key={event.id}
@@ -428,7 +432,7 @@ export default function EventsPage() {
 
             {/* Pagination */}
             {totalPages > 1 && (
-              <div className="flex items-center justify-center gap-2 mt-12">
+              <div className="flex items-center justify-center gap-2 mt-12" data-testid="events-pagination">
                 <Button
                   variant="outline"
                   size="sm"
@@ -492,7 +496,7 @@ export default function EventsPage() {
             )}
           </>
         ) : (
-          <div className="text-center py-16 space-y-4">
+          <div className="text-center py-16 space-y-4" data-testid="events-no-results">
             <div className="glass inline-block p-6 rounded-full">
               <Search className="h-12 w-12 text-muted-foreground" />
             </div>

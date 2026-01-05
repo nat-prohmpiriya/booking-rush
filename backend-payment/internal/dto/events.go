@@ -37,6 +37,7 @@ func (e *SeatReleaseEvent) Key() string {
 }
 
 // PaymentSuccessEvent is published when payment succeeds to trigger post-payment saga
+// This event contains enriched booking data for notification service
 type PaymentSuccessEvent struct {
 	EventType             string    `json:"event_type"`
 	BookingID             string    `json:"booking_id"`
@@ -46,6 +47,21 @@ type PaymentSuccessEvent struct {
 	Amount                int64     `json:"amount"`
 	Currency              string    `json:"currency"`
 	Timestamp             time.Time `json:"timestamp"`
+
+	// Enriched booking data for notification service
+	UserEmail        string  `json:"user_email,omitempty"`
+	EventID          string  `json:"event_id,omitempty"`
+	EventName        string  `json:"event_name,omitempty"`
+	ShowID           string  `json:"show_id,omitempty"`
+	ShowDate         string  `json:"show_date,omitempty"`
+	ZoneID           string  `json:"zone_id,omitempty"`
+	ZoneName         string  `json:"zone_name,omitempty"`
+	Quantity         int     `json:"quantity,omitempty"`
+	UnitPrice        float64 `json:"unit_price,omitempty"`
+	TotalPrice       float64 `json:"total_price,omitempty"`
+	ConfirmationCode string  `json:"confirmation_code,omitempty"`
+	VenueName        string  `json:"venue_name,omitempty"`
+	VenueAddress     string  `json:"venue_address,omitempty"`
 }
 
 // Key returns the Kafka message key for partitioning

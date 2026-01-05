@@ -160,7 +160,7 @@ function BookingConfirmationContent() {
   const { booking, event, show, zone } = bookingDetails
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-white flex items-center justify-center p-4">
+    <div className="min-h-screen bg-[#0a0a0a] text-white flex items-center justify-center p-4" data-testid="confirmation-page">
       <div className="max-w-2xl w-full space-y-8 py-12">
         {/* Success Animation */}
         <div className="flex flex-col items-center space-y-6">
@@ -168,6 +168,7 @@ function BookingConfirmationContent() {
             className={`relative transition-all duration-700 ${
               showSuccess ? "scale-100 opacity-100" : "scale-50 opacity-0"
             }`}
+            data-testid="confirmation-success-icon"
           >
             <div className="w-24 h-24 rounded-full bg-[#d4af37]/10 flex items-center justify-center relative">
               {/* Gold glow effect */}
@@ -179,17 +180,17 @@ function BookingConfirmationContent() {
           </div>
 
           <div className="text-center space-y-2">
-            <h1 className="text-4xl md:text-5xl font-bold text-balance">Booking Confirmed!</h1>
+            <h1 className="text-4xl md:text-5xl font-bold text-balance" data-testid="confirmation-title">Booking Confirmed!</h1>
             <p className="text-lg text-zinc-400">Your tickets have been sent to your email</p>
           </div>
         </div>
 
         {/* E-Ticket Card */}
-        <Card className="bg-zinc-900/50 border-zinc-800 backdrop-blur-sm overflow-hidden">
+        <Card className="bg-zinc-900/50 border-zinc-800 backdrop-blur-sm overflow-hidden" data-testid="confirmation-eticket-card">
           <div className="p-6 md:p-8 space-y-6">
             {/* QR Code Section */}
             <div className="flex flex-col md:flex-row gap-6 items-start md:items-center">
-              <div className="shrink-0">
+              <div className="shrink-0" data-testid="confirmation-qrcode">
                 <div className="w-32 h-32 bg-white rounded-lg p-2 shadow-lg shadow-[#d4af37]/20">
                   <QRCodeSVG
                     value={booking.id}
@@ -205,12 +206,12 @@ function BookingConfirmationContent() {
                 {/* Booking ID */}
                 <div>
                   <p className="text-sm text-zinc-500 uppercase tracking-wider">Booking ID</p>
-                  <p className="text-lg font-bold text-[#d4af37] font-mono tracking-wide break-all">{booking.id}</p>
+                  <p className="text-lg font-bold text-[#d4af37] font-mono tracking-wide break-all" data-testid="confirmation-booking-id">{booking.id}</p>
                 </div>
 
                 {/* Event Name */}
                 <div>
-                  <h2 className="text-2xl font-semibold text-balance">{event?.name || "Event"}</h2>
+                  <h2 className="text-2xl font-semibold text-balance" data-testid="confirmation-event-name">{event?.name || "Event"}</h2>
                 </div>
               </div>
             </div>
@@ -221,7 +222,7 @@ function BookingConfirmationContent() {
             {/* Event Details */}
             <div className="grid md:grid-cols-2 gap-6">
               {/* Date & Time */}
-              <div className="flex gap-3">
+              <div className="flex gap-3" data-testid="confirmation-date-time">
                 <div className="shrink-0">
                   <div className="w-10 h-10 rounded-lg bg-[#d4af37]/10 flex items-center justify-center">
                     <Calendar className="w-5 h-5 text-[#d4af37]" />
@@ -239,7 +240,7 @@ function BookingConfirmationContent() {
               </div>
 
               {/* Venue */}
-              <div className="flex gap-3">
+              <div className="flex gap-3" data-testid="confirmation-venue">
                 <div className="shrink-0">
                   <div className="w-10 h-10 rounded-lg bg-[#d4af37]/10 flex items-center justify-center">
                     <MapPin className="w-5 h-5 text-[#d4af37]" />
@@ -253,7 +254,7 @@ function BookingConfirmationContent() {
               </div>
 
               {/* Zone */}
-              <div className="flex gap-3">
+              <div className="flex gap-3" data-testid="confirmation-zone">
                 <div className="shrink-0">
                   <div className="w-10 h-10 rounded-lg bg-[#d4af37]/10 flex items-center justify-center">
                     <Ticket className="w-5 h-5 text-[#d4af37]" />
@@ -266,7 +267,7 @@ function BookingConfirmationContent() {
               </div>
 
               {/* Quantity & Price */}
-              <div className="flex gap-3">
+              <div className="flex gap-3" data-testid="confirmation-tickets">
                 <div className="shrink-0">
                   <div className="w-10 h-10 rounded-lg bg-[#d4af37]/10 flex items-center justify-center">
                     <span className="text-[#d4af37] font-bold text-lg">#</span>
@@ -284,7 +285,7 @@ function BookingConfirmationContent() {
             <div className="border-t border-zinc-800" />
 
             {/* Barcode */}
-            <div className="space-y-2">
+            <div className="space-y-2" data-testid="confirmation-barcode">
               <p className="text-sm text-zinc-500 text-center">Scan at entry</p>
               <div className="flex justify-center">
                 <svg
@@ -349,7 +350,7 @@ function BookingConfirmationContent() {
 
         {/* Action Buttons */}
         <div className="flex flex-col sm:flex-row gap-4">
-          <Button className="flex-1 h-12 bg-[#d4af37] hover:bg-[#c19d2f] text-[#0a0a0a] font-semibold" size="lg">
+          <Button className="flex-1 h-12 bg-[#d4af37] hover:bg-[#c19d2f] text-[#0a0a0a] font-semibold" size="lg" data-testid="confirmation-download-button">
             <Download className="w-5 h-5 mr-2" />
             Download E-Ticket
           </Button>
@@ -357,6 +358,7 @@ function BookingConfirmationContent() {
             variant="outline"
             className="flex-1 h-12 border-zinc-700 hover:bg-zinc-800 hover:text-white bg-transparent"
             size="lg"
+            data-testid="confirmation-wallet-button"
           >
             <Wallet className="w-5 h-5 mr-2" />
             Add to Wallet
@@ -368,6 +370,7 @@ function BookingConfirmationContent() {
           <Link
             href="/my-bookings"
             className="text-[#d4af37] hover:text-[#c19d2f] font-medium inline-flex items-center gap-2 transition-colors"
+            data-testid="confirmation-view-bookings-link"
           >
             View My Bookings
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

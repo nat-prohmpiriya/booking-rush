@@ -199,8 +199,8 @@ function QueueWaitingRoomContent() {
   // Error state
   if (queueState === "error") {
     return (
-      <div className="min-h-screen bg-[#0a0a0a] text-white flex items-center justify-center p-4">
-        <Card className="bg-[#1a1a1a] border-red-800 p-8 max-w-md text-center">
+      <div className="min-h-screen bg-[#0a0a0a] text-white flex items-center justify-center p-4" data-testid="queue-page">
+        <Card className="bg-[#1a1a1a] border-red-800 p-8 max-w-md text-center" data-testid="queue-error">
           <div className="w-16 h-16 rounded-full border-2 border-red-500 flex items-center justify-center mx-auto mb-4">
             <svg className="w-8 h-8 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -219,8 +219,8 @@ function QueueWaitingRoomContent() {
   // Ready state
   if (queueState === "ready") {
     return (
-      <div className="min-h-screen bg-[#0a0a0a] text-white flex items-center justify-center p-4">
-        <div className="w-full max-w-2xl space-y-8 text-center">
+      <div className="min-h-screen bg-[#0a0a0a] text-white flex items-center justify-center p-4" data-testid="queue-page">
+        <div className="w-full max-w-2xl space-y-8 text-center" data-testid="queue-ready">
           <div className="space-y-4">
             <div className="w-20 h-20 rounded-full bg-green-500/20 border-2 border-green-500 flex items-center justify-center mx-auto">
               <svg className="w-10 h-10 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -231,7 +231,7 @@ function QueueWaitingRoomContent() {
             <p className="text-gray-400 text-lg">Redirecting to checkout{dots}</p>
           </div>
 
-          <div className="py-4">
+          <div className="py-4" data-testid="queue-progress">
             <div className="w-full h-2 bg-gray-800 rounded-full overflow-hidden">
               <div className="h-full bg-green-500 animate-pulse" style={{ width: "100%" }} />
             </div>
@@ -251,8 +251,8 @@ function QueueWaitingRoomContent() {
 
   // Joining/Waiting state
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-white flex items-center justify-center p-4">
-      <div className="w-full max-w-2xl space-y-8">
+    <div className="min-h-screen bg-[#0a0a0a] text-white flex items-center justify-center p-4" data-testid="queue-page">
+      <div className="w-full max-w-2xl space-y-8" data-testid="queue-waiting">
         {/* Main Content */}
         <div className="text-center space-y-8">
           {/* Header */}
@@ -283,7 +283,7 @@ function QueueWaitingRoomContent() {
               <div className="space-y-2">
                 <p className="text-sm uppercase tracking-wider text-[#d4af37] font-medium">Your Position</p>
                 <div className="relative">
-                  <div className="text-7xl md:text-8xl font-bold text-[#d4af37] animate-pulse">
+                  <div className="text-7xl md:text-8xl font-bold text-[#d4af37] animate-pulse" data-testid="queue-position">
                     #{position.toLocaleString()}
                   </div>
                   {/* Glow effect */}
@@ -297,7 +297,7 @@ function QueueWaitingRoomContent() {
               {/* Estimated Wait Time */}
               <div className="space-y-2">
                 <p className="text-sm uppercase tracking-wider text-gray-400 font-medium">Estimated Wait Time</p>
-                <p className="text-3xl font-semibold text-white">~{formatWaitTime(estimatedWait)}</p>
+                <p className="text-3xl font-semibold text-white" data-testid="queue-estimated-wait">~{formatWaitTime(estimatedWait)}</p>
               </div>
             </>
           )}
@@ -310,7 +310,7 @@ function QueueWaitingRoomContent() {
           )}
 
           {/* Animated Progress Indicator */}
-          <div className="py-8">
+          <div className="py-8" data-testid="queue-progress">
             <div className="w-full h-1 bg-gray-800 rounded-full overflow-hidden">
               <div
                 className="h-full bg-linear-to-r from-[#d4af37] to-[#f4d03f]"
@@ -323,7 +323,7 @@ function QueueWaitingRoomContent() {
           </div>
 
           {/* Keep Page Open Notice */}
-          <Card className="bg-[#1a1a1a] border-gray-800 p-6">
+          <Card className="bg-[#1a1a1a] border-gray-800 p-6" data-testid="queue-notice-card">
             <div className="flex items-start gap-4">
               <div className="shrink-0">
                 <svg className="w-6 h-6 text-[#d4af37]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -348,7 +348,7 @@ function QueueWaitingRoomContent() {
 
         {/* Order Summary Card */}
         {Object.keys(selectedTickets).length > 0 && (
-          <Card className="bg-linear-to-br from-[#1a1a1a] to-[#0f0f0f] border-[#d4af37]/20 p-6 md:p-8">
+          <Card className="bg-linear-to-br from-[#1a1a1a] to-[#0f0f0f] border-[#d4af37]/20 p-6 md:p-8" data-testid="queue-order-summary">
             <div className="space-y-4">
               <div className="flex items-center gap-2">
                 <div className="w-2 h-2 rounded-full bg-[#d4af37] animate-pulse" />
@@ -385,6 +385,7 @@ function QueueWaitingRoomContent() {
             variant="ghost"
             onClick={handleLeaveQueue}
             className="text-gray-500 hover:text-gray-300"
+            data-testid="queue-leave-button"
           >
             Leave Queue
           </Button>

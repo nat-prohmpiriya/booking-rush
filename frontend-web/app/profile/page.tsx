@@ -192,7 +192,7 @@ export default function ProfilePage() {
   }
 
   return (
-    <main className="min-h-screen bg-background">
+    <main className="min-h-screen bg-background" data-testid="profile-page">
       <Header />
 
       {/* Hero Section */}
@@ -229,7 +229,7 @@ export default function ProfilePage() {
             {/* Profile Card */}
             <div className="lg:col-span-2 space-y-6">
               {/* User Info Card */}
-              <div className="glass rounded-xl p-6 border border-border/50">
+              <div className="glass rounded-xl p-6 border border-border/50" data-testid="profile-user-card">
                 <div className="flex flex-col sm:flex-row items-center gap-6">
                   {/* Avatar */}
                   <div className="relative group">
@@ -270,6 +270,7 @@ export default function ProfilePage() {
                       size="sm"
                       onClick={() => setIsEditing(true)}
                       className="border-primary/50 text-primary hover:bg-primary/10"
+                      data-testid="profile-edit-button"
                     >
                       <Edit3 className="h-4 w-4 mr-2" />
                       Edit Profile
@@ -279,7 +280,7 @@ export default function ProfilePage() {
               </div>
 
               {/* Profile Form */}
-              <div className="glass rounded-xl p-6 border border-border/50">
+              <div className="glass rounded-xl p-6 border border-border/50" data-testid="profile-form">
                 <h3 className="text-lg font-semibold text-foreground mb-6">Personal Information</h3>
                 
                 <div className="space-y-6">
@@ -297,6 +298,7 @@ export default function ProfilePage() {
                         onChange={handleInputChange}
                         disabled={!isEditing}
                         className="pl-10 glass border-primary/30 focus:border-primary disabled:opacity-70"
+                        data-testid="profile-name-input"
                       />
                     </div>
                   </div>
@@ -316,6 +318,7 @@ export default function ProfilePage() {
                         onChange={handleInputChange}
                         disabled={true}
                         className="pl-10 glass border-primary/30 focus:border-primary disabled:opacity-70"
+                        data-testid="profile-email-input"
                       />
                     </div>
                     <p className="text-xs text-muted-foreground">Email cannot be changed</p>
@@ -336,6 +339,7 @@ export default function ProfilePage() {
                         disabled={!isEditing}
                         placeholder="Add phone number"
                         className="pl-10 glass border-primary/30 focus:border-primary disabled:opacity-70"
+                        data-testid="profile-phone-input"
                       />
                     </div>
                   </div>
@@ -355,6 +359,7 @@ export default function ProfilePage() {
                         disabled={!isEditing}
                         placeholder="Add location"
                         className="pl-10 glass border-primary/30 focus:border-primary disabled:opacity-70"
+                        data-testid="profile-location-input"
                       />
                     </div>
                   </div>
@@ -366,6 +371,7 @@ export default function ProfilePage() {
                         onClick={handleSave}
                         disabled={isSaving}
                         className="bg-linear-to-r from-primary to-amber-400 hover:from-amber-400 hover:to-primary text-primary-foreground font-semibold"
+                        data-testid="profile-save-button"
                       >
                         {isSaving ? (
                           <>
@@ -384,6 +390,7 @@ export default function ProfilePage() {
                         onClick={handleCancel}
                         disabled={isSaving}
                         className="border-border/50"
+                        data-testid="profile-cancel-button"
                       >
                         <X className="h-4 w-4 mr-2" />
                         Cancel
@@ -397,7 +404,7 @@ export default function ProfilePage() {
             {/* Sidebar Menu */}
             <div className="space-y-6">
               {/* Quick Links */}
-              <div className="glass rounded-xl border border-border/50 overflow-hidden">
+              <div className="glass rounded-xl border border-border/50 overflow-hidden" data-testid="profile-quick-links">
                 <div className="p-4 border-b border-border/50">
                   <h3 className="font-semibold text-foreground flex items-center gap-2">
                     <Settings className="h-4 w-4 text-primary" />
@@ -467,6 +474,7 @@ export default function ProfilePage() {
                     variant="outline"
                     onClick={handleLogout}
                     className="w-full border-red-500/50 text-red-400 hover:bg-red-500/10 hover:text-red-400"
+                    data-testid="profile-logout-button"
                   >
                     <LogOut className="h-4 w-4 mr-2" />
                     Logout

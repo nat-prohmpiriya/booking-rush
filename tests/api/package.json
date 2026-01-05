@@ -1,0 +1,20 @@
+{
+  "name": "booking-rush-api-tests",
+  "version": "1.0.0",
+  "description": "API Integration Tests for Booking Rush",
+  "scripts": {
+    "test": "jest --runInBand --verbose",
+    "test:auth": "jest --runInBand auth.test.ts",
+    "test:booking": "jest --runInBand booking.test.ts",
+    "test:organizer": "jest --runInBand organizer.test.ts"
+  },
+  "devDependencies": {
+    "@types/jest": "^29.5.14",
+    "@types/node": "^22.10.2",
+    "axios": "^1.7.9",
+    "dotenv": "^16.4.7",
+    "jest": "^29.7.0",
+    "ts-jest": "^29.2.5",
+    "typescript": "^5.7.2"
+  }
+}

@@ -30,18 +30,20 @@ export function EventSection({
     warning: "text-amber-500",
   }
 
+  const sectionId = title.toLowerCase().replace(/\s+/g, '-')
+
   return (
-    <section className="space-y-8">
+    <section className="space-y-8" data-testid={`event-section-${sectionId}`}>
       <div className="space-y-4">
-        <h2 className="text-2xl lg:text-4xl font-bold text-balance text-primary uppercase">{title}</h2>
+        <h2 className="text-2xl lg:text-4xl font-bold text-balance text-primary uppercase" data-testid={`event-section-title-${sectionId}`}>{title}</h2>
         {subtitle && (
-          <p className="text-primary max-w-2xl text-pretty font-semibold">
+          <p className="text-primary max-w-2xl text-pretty font-semibold" data-testid={`event-section-subtitle-${sectionId}`}>
             {subtitle}
           </p>
         )}
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8" data-testid={`event-section-grid-${sectionId}`}>
         {events.map((event) => (
           <EventCard
             key={event.id}

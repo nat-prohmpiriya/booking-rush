@@ -458,17 +458,58 @@ func (h *PaymentHandler) CreatePaymentIntent(c *gin.Context) {
 
 	span.SetAttributes(attribute.String("payment_id", payment.ID))
 
+	// Build enriched metadata for Stripe PaymentIntent
+	// This metadata will be available in webhooks for notification service
+	stripeMetadata := map[string]string{
+		"booking_id": req.BookingID,
+		"user_id":    userID,
+		"payment_id": payment.ID,
+	}
+
+	// Add enriched booking data from frontend if available
+	if req.Metadata != nil {
+		if req.Metadata.UserEmail != "" {
+			stripeMetadata["user_email"] = req.Metadata.UserEmail
+		}
+		if req.Metadata.EventID != "" {
+			stripeMetadata["event_id"] = req.Metadata.EventID
+		}
+		if req.Metadata.EventName != "" {
+			stripeMetadata["event_name"] = req.Metadata.EventName
+		}
+		if req.Metadata.ShowID != "" {
+			stripeMetadata["show_id"] = req.Metadata.ShowID
+		}
+		if req.Metadata.ShowDate != "" {
+			stripeMetadata["show_date"] = req.Metadata.ShowDate
+		}
+		if req.Metadata.ZoneID != "" {
+			stripeMetadata["zone_id"] = req.Metadata.ZoneID
+		}
+		if req.Metadata.ZoneName != "" {
+			stripeMetadata["zone_name"] = req.Metadata.ZoneName
+		}
+		if req.Metadata.Quantity > 0 {
+			stripeMetadata["quantity"] = strconv.Itoa(req.Metadata.Quantity)
+		}
+		if req.Metadata.UnitPrice > 0 {
+			stripeMetadata["unit_price"] = strconv.FormatFloat(req.Metadata.UnitPrice, 'f', 2, 64)
+		}
+		if req.Metadata.VenueName != "" {
+			stripeMetadata["venue_name"] = req.Metadata.VenueName
+		}
+		if req.Metadata.VenueAddress != "" {
+			stripeMetadata["venue_address"] = req.Metadata.VenueAddress
+		}
+	}
+
 	// Create PaymentIntent via gateway
 	intentReq := &gateway.PaymentIntentRequest{
 		PaymentID:   payment.ID,
 		Amount:      req.Amount,
 		Currency:    currency,
 		Description: "Booking payment for " + req.BookingID,
-		Metadata: map[string]string{
-			"booking_id": req.BookingID,
-			"user_id":    userID,
-			"payment_id": payment.ID,
-		},
+		Metadata:    stripeMetadata,
 	}
 
 	intentResp, err := h.paymentGateway.CreatePaymentIntent(ctx, intentReq)

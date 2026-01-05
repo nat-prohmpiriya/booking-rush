@@ -118,11 +118,11 @@ function BookingCard({ booking }: { booking: BookingWithEvent }) {
   const StatusIcon = statusConfig.icon
 
   return (
-    <Link href={`/my-bookings/${booking.id}`} className="block">
-      <div className="group glass rounded-xl p-4 sm:p-6 border border-border/50 hover:border-primary/50 transition-all duration-300 cursor-pointer relative">
+    <Link href={`/my-bookings/${booking.id}`} className="block" data-testid={`booking-card-${booking.id}`}>
+      <div className="group glass rounded-xl p-4 sm:p-6 border border-border/50 hover:border-primary/50 transition-all duration-300 cursor-pointer relative" data-testid="booking-card">
         {/* Status Badge - Top Right Corner */}
         <div className="absolute top-3 right-3 sm:top-4 sm:right-4 z-10">
-          <Badge className={`${statusConfig.color} border`}>
+          <Badge className={`${statusConfig.color} border`} data-testid={`booking-card-status-${booking.id}`}>
             <StatusIcon className="h-3 w-3 mr-1" />
             {statusConfig.label}
           </Badge>
@@ -312,11 +312,11 @@ export default function MyBookingsPage() {
   }
 
   return (
-    <main className="min-h-screen bg-background">
+    <main className="min-h-screen bg-background" data-testid="my-bookings-page">
       <Header />
 
       {/* Hero Section */}
-      <section className="relative pt-24 pb-12 lg:pt-32 lg:pb-16 overflow-hidden">
+      <section className="relative pt-24 pb-12 lg:pt-32 lg:pb-16 overflow-hidden" data-testid="my-bookings-hero">
         {/* Background */}
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,var(--tw-gradient-stops))] from-primary/20 via-background to-background" />
         <div className="absolute inset-0 bg-[url('/images/grid-pattern.svg')] opacity-5" />
@@ -343,23 +343,23 @@ export default function MyBookingsPage() {
       </section>
 
       {/* Stats Summary */}
-      <section className="container mx-auto px-4 lg:px-8 -mt-4 mb-8">
+      <section className="container mx-auto px-4 lg:px-8 -mt-4 mb-8" data-testid="my-bookings-stats">
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-          <div className="glass rounded-xl p-4 border border-border/50 text-center">
+          <div className="glass rounded-xl p-4 border border-border/50 text-center" data-testid="my-bookings-stats-total">
             <p className="text-3xl font-bold bg-linear-to-r from-primary to-amber-400 bg-clip-text text-transparent">
               {bookingSummary.total}
             </p>
             <p className="text-sm text-muted-foreground">Total Bookings</p>
           </div>
-          <div className="glass rounded-xl p-4 border border-green-500/30 text-center">
+          <div className="glass rounded-xl p-4 border border-green-500/30 text-center" data-testid="my-bookings-stats-confirmed">
             <p className="text-3xl font-bold text-green-400">{bookingSummary.confirmed}</p>
             <p className="text-sm text-muted-foreground">Confirmed</p>
           </div>
-          <div className="glass rounded-xl p-4 border border-amber-500/30 text-center">
+          <div className="glass rounded-xl p-4 border border-amber-500/30 text-center" data-testid="my-bookings-stats-pending">
             <p className="text-3xl font-bold text-amber-400">{bookingSummary.pending}</p>
             <p className="text-sm text-muted-foreground">Pending</p>
           </div>
-          <div className="glass rounded-xl p-4 border border-blue-500/30 text-center">
+          <div className="glass rounded-xl p-4 border border-blue-500/30 text-center" data-testid="my-bookings-stats-completed">
             <p className="text-3xl font-bold text-blue-400">{bookingSummary.completed}</p>
             <p className="text-sm text-muted-foreground">Completed</p>
           </div>
@@ -367,9 +367,9 @@ export default function MyBookingsPage() {
       </section>
 
       {/* Bookings Section */}
-      <section className="container mx-auto px-4 lg:px-8 pb-16 lg:pb-24">
+      <section className="container mx-auto px-4 lg:px-8 pb-16 lg:pb-24" data-testid="my-bookings-section">
         {/* Filters */}
-        <div className="flex flex-col sm:flex-row gap-4 mb-8">
+        <div className="flex flex-col sm:flex-row gap-4 mb-8" data-testid="my-bookings-filters">
           {/* Search */}
           <div className="relative flex-1">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
@@ -379,40 +379,41 @@ export default function MyBookingsPage() {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-12 glass border-primary/30 focus:border-primary"
+              data-testid="my-bookings-search-input"
             />
           </div>
 
           {/* Status Filter */}
           <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as StatusFilter)}>
-            <SelectTrigger className="w-full sm:w-48 border-primary/30">
+            <SelectTrigger className="w-full sm:w-48 border-primary/30" data-testid="my-bookings-status-filter">
               <Filter className="h-4 w-4 mr-2" />
               <SelectValue placeholder="Filter by status" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All Bookings</SelectItem>
-              <SelectItem value="confirmed">Confirmed</SelectItem>
-              <SelectItem value="pending">Pending</SelectItem>
-              <SelectItem value="completed">Completed</SelectItem>
-              <SelectItem value="cancelled">Cancelled</SelectItem>
+              <SelectItem value="all" data-testid="my-bookings-filter-all">All Bookings</SelectItem>
+              <SelectItem value="confirmed" data-testid="my-bookings-filter-confirmed">Confirmed</SelectItem>
+              <SelectItem value="pending" data-testid="my-bookings-filter-pending">Pending</SelectItem>
+              <SelectItem value="completed" data-testid="my-bookings-filter-completed">Completed</SelectItem>
+              <SelectItem value="cancelled" data-testid="my-bookings-filter-cancelled">Cancelled</SelectItem>
             </SelectContent>
           </Select>
         </div>
 
         {/* Bookings List */}
         {isLoading ? (
-          <div className="space-y-4">
+          <div className="space-y-4" data-testid="my-bookings-loading">
             <BookingCardSkeleton />
             <BookingCardSkeleton />
             <BookingCardSkeleton />
           </div>
         ) : filteredBookings.length > 0 ? (
-          <div className="space-y-4">
+          <div className="space-y-4" data-testid="my-bookings-list">
             {filteredBookings.map((booking) => (
               <BookingCard key={booking.id} booking={booking} />
             ))}
           </div>
         ) : (
-          <div className="text-center py-16 space-y-4">
+          <div className="text-center py-16 space-y-4" data-testid="my-bookings-empty">
             <div className="glass inline-block p-6 rounded-full">
               <Ticket className="h-12 w-12 text-muted-foreground" />
             </div>
@@ -422,8 +423,8 @@ export default function MyBookingsPage() {
                 ? `You don't have any ${statusFilter} bookings.`
                 : "You haven't made any bookings yet. Start exploring events!"}
             </p>
-            <Link href="/events">
-              <Button className="mt-4 bg-linear-to-r from-primary to-amber-400 text-primary-foreground">
+            <Link href="/events" data-testid="my-bookings-browse-events-link">
+              <Button className="mt-4 bg-linear-to-r from-primary to-amber-400 text-primary-foreground" data-testid="my-bookings-browse-events-button">
                 Browse Events
               </Button>
             </Link>

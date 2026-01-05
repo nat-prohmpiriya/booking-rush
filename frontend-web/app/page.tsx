@@ -88,11 +88,11 @@ export default function Home() {
   const categorizedEvents = useMemo(() => categorizeEvents(events), [events])
 
   return (
-    <main className="min-h-screen">
+    <main className="min-h-screen" data-testid="home-page">
       <Header />
       <Hero />
 
-      <div className="container mx-auto px-4 lg:px-8 py-16 lg:py-24 space-y-20">
+      <div className="container mx-auto px-4 lg:px-8 py-16 lg:py-24 space-y-20" data-testid="home-events-container">
         {isLoading ? (
           <LoadingSkeleton />
         ) : (
@@ -126,7 +126,7 @@ export default function Home() {
 
             {/* Show message if no events at all */}
             {events.length === 0 && (
-              <div className="text-center py-12">
+              <div className="text-center py-12" data-testid="home-no-events">
                 <p className="text-xl text-muted-foreground">
                   No events available at the moment.
                 </p>
