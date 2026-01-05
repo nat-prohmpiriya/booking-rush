@@ -220,6 +220,21 @@ export interface CreatePaymentIntentRequest {
   booking_id: string
   amount: number
   currency?: string
+  // Metadata for notification service (enriched data)
+  metadata?: {
+    user_email?: string
+    event_id?: string
+    event_name?: string
+    show_id?: string
+    show_date?: string
+    zone_id?: string
+    zone_name?: string
+    quantity?: number
+    unit_price?: number
+    confirmation_code?: string
+    venue_name?: string
+    venue_address?: string
+  }
 }
 
 export interface PaymentIntentResponse {

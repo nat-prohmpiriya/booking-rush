@@ -91,8 +91,10 @@ func (h *WebhookHandler) handlePaymentIntentSucceeded(c *gin.Context, event stri
 		return
 	}
 
+	// Extract basic metadata
 	paymentID := paymentIntent.Metadata["payment_id"]
 	bookingID := paymentIntent.Metadata["booking_id"]
+	userID := paymentIntent.Metadata["user_id"]
 
 	log.Info(fmt.Sprintf("Payment succeeded: payment_id=%s, booking_id=%s, amount=%d %s",
 		paymentID, bookingID, paymentIntent.Amount, paymentIntent.Currency))
@@ -112,7 +114,30 @@ func (h *WebhookHandler) handlePaymentIntentSucceeded(c *gin.Context, event stri
 	// Publish payment.success event to trigger post-payment saga
 	// This will confirm the booking and remove TTL from Redis
 	if bookingID != "" {
-		h.publishPaymentSuccessEvent(c.Request.Context(), bookingID, paymentID, paymentIntent.ID, paymentIntent.Amount, string(paymentIntent.Currency))
+		// Extract enriched metadata from Stripe PaymentIntent
+		metadata := paymentIntent.Metadata
+		h.publishPaymentSuccessEvent(c.Request.Context(), &dto.PaymentSuccessEvent{
+			EventType:             "payment.success",
+			BookingID:             bookingID,
+			PaymentID:             paymentID,
+			StripePaymentIntentID: paymentIntent.ID,
+			UserID:                userID,
+			Amount:                paymentIntent.Amount,
+			Currency:              string(paymentIntent.Currency),
+			// Enriched data from Stripe metadata
+			UserEmail:    metadata["user_email"],
+			EventID:      metadata["event_id"],
+			EventName:    metadata["event_name"],
+			ShowID:       metadata["show_id"],
+			ShowDate:     metadata["show_date"],
+			ZoneID:       metadata["zone_id"],
+			ZoneName:     metadata["zone_name"],
+			Quantity:     parseIntFromMetadata(metadata["quantity"]),
+			UnitPrice:    parseFloatFromMetadata(metadata["unit_price"]),
+			TotalPrice:   float64(paymentIntent.Amount) / 100, // Convert from satang to baht
+			VenueName:    metadata["venue_name"],
+			VenueAddress: metadata["venue_address"],
+		})
 	}
 
 	c.JSON(http.StatusOK, gin.H{"received": true})
@@ -252,9 +277,29 @@ func (h *WebhookHandler) publishSeatReleaseEvent(ctx context.Context, bookingID,
 	log.Info(fmt.Sprintf("Published seat release event: booking_id=%s, reason=%s", bookingID, reason))
 }
 
+// parseIntFromMetadata parses an int from string metadata, returns 0 if invalid
+func parseIntFromMetadata(s string) int {
+	if s == "" {
+		return 0
+	}
+	var i int
+	fmt.Sscanf(s, "%d", &i)
+	return i
+}
+
+// parseFloatFromMetadata parses a float64 from string metadata, returns 0 if invalid
+func parseFloatFromMetadata(s string) float64 {
+	if s == "" {
+		return 0
+	}
+	var f float64
+	fmt.Sscanf(s, "%f", &f)
+	return f
+}
+
 // publishPaymentSuccessEvent publishes a payment success event to Kafka
 // This triggers the post-payment saga to confirm booking and remove TTL
-func (h *WebhookHandler) publishPaymentSuccessEvent(ctx context.Context, bookingID, paymentID, stripePaymentIntentID string, amount int64, currency string) {
+func (h *WebhookHandler) publishPaymentSuccessEvent(ctx context.Context, event *dto.PaymentSuccessEvent) {
 	log := logger.Get()
 
 	if h.kafkaProducer == nil {
@@ -262,20 +307,14 @@ func (h *WebhookHandler) publishPaymentSuccessEvent(ctx context.Context, booking
 		return
 	}
 
-	event := &dto.PaymentSuccessEvent{
-		EventType:             "payment.success",
-		BookingID:             bookingID,
-		PaymentID:             paymentID,
-		StripePaymentIntentID: stripePaymentIntentID,
-		Amount:                amount,
-		Currency:              currency,
-		Timestamp:             time.Now().UTC(),
-	}
+	// Set timestamp
+	event.Timestamp = time.Now().UTC()
 
 	if err := h.kafkaProducer.ProduceJSON(ctx, dto.TopicPaymentSuccess, event.Key(), event, nil); err != nil {
 		log.Error(fmt.Sprintf("Failed to publish payment success event: %v", err))
 		return
 	}
 
-	log.Info(fmt.Sprintf("Published payment success event: booking_id=%s, payment_id=%s", bookingID, paymentID))
+	log.Info(fmt.Sprintf("Published payment success event: booking_id=%s, payment_id=%s, user_email=%s",
+		event.BookingID, event.PaymentID, event.UserEmail))
 }

@@ -83,11 +83,28 @@ type PaymentListResponse struct {
 	Total    int                `json:"total"`
 }
 
+// PaymentIntentMetadata contains enriched booking data for notifications
+type PaymentIntentMetadata struct {
+	UserEmail        string  `json:"user_email,omitempty"`
+	EventID          string  `json:"event_id,omitempty"`
+	EventName        string  `json:"event_name,omitempty"`
+	ShowID           string  `json:"show_id,omitempty"`
+	ShowDate         string  `json:"show_date,omitempty"`
+	ZoneID           string  `json:"zone_id,omitempty"`
+	ZoneName         string  `json:"zone_name,omitempty"`
+	Quantity         int     `json:"quantity,omitempty"`
+	UnitPrice        float64 `json:"unit_price,omitempty"`
+	ConfirmationCode string  `json:"confirmation_code,omitempty"`
+	VenueName        string  `json:"venue_name,omitempty"`
+	VenueAddress     string  `json:"venue_address,omitempty"`
+}
+
 // CreatePaymentIntentRequest represents a request to create a Stripe PaymentIntent
 type CreatePaymentIntentRequest struct {
-	BookingID string  `json:"booking_id" binding:"required"`
-	Amount    float64 `json:"amount" binding:"required,gt=0"`
-	Currency  string  `json:"currency"`
+	BookingID string                 `json:"booking_id" binding:"required"`
+	Amount    float64                `json:"amount" binding:"required,gt=0"`
+	Currency  string                 `json:"currency"`
+	Metadata  *PaymentIntentMetadata `json:"metadata,omitempty"`
 }
 
 // PaymentIntentResponse represents a Stripe PaymentIntent response

@@ -94,3 +94,7 @@ data:
   TICKET_SERVICE_URL: "http://ticket-service:8082"
   BOOKING_SERVICE_URL: "http://booking-service:8083"
   PAYMENT_SERVICE_URL: "http://payment-service:8084"
+  NOTIFICATION_SERVICE_URL: "http://notification-service:8085"
+
+  # MongoDB (for notification service)
+  MONGODB_URI: "mongodb://booking-rush-mongodb.booking-rush.svc.cluster.local:27017/booking_rush_notifications"

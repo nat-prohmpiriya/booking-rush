@@ -7,6 +7,7 @@ import { Separator } from "@/components/ui/separator"
 import { Clock, Shield, Lock, Calendar, MapPin, Ticket, AlertTriangle, CreditCard } from "lucide-react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { bookingApi, paymentApi } from "@/lib/api/booking"
+import { useAuth } from "@/contexts/auth-context"
 import { paymentApi as paymentMethodsApi, type PaymentMethod } from "@/lib/api/payment"
 import { eventsApi, zonesApi } from "@/lib/api/events"
 import type { EventResponse, ShowResponse, ShowZoneResponse, ReserveSeatsResponse, PaymentIntentResponse } from "@/lib/api/types"
@@ -50,6 +51,7 @@ function CheckoutContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const bookingIdParam = searchParams.get("booking_id")
+  const { user } = useAuth()
 
   // Mode: "queue" (normal flow) or "direct" (from booking detail)
   const [mode, setMode] = useState<"queue" | "direct" | null>(null)
@@ -304,10 +306,27 @@ function CheckoutContent() {
       try {
         const orderSummary = getOrderSummary()
 
+        // Build enriched metadata for notification service
+        const zone = zones.length > 0 ? zones[0] : null
+        const ticketQuantity = orderSummary.items.reduce((sum, item) => sum + item.quantity, 0)
+
         const intentData = await paymentApi.createPaymentIntent({
           booking_id: reservation.booking_id,
           amount: orderSummary.total,
           currency: "THB",
+          metadata: {
+            user_email: user?.email,
+            event_id: event?.id,
+            event_name: event?.name,
+            show_id: show?.id || queueData?.showId,
+            show_date: show?.show_date,
+            zone_id: zone?.id,
+            zone_name: zone?.name,
+            quantity: ticketQuantity,
+            unit_price: zone?.price,
+            venue_name: event?.venue_name,
+            venue_address: event?.venue_address,
+          },
         })
 
         setPaymentIntent(intentData)
@@ -324,7 +343,7 @@ function CheckoutContent() {
     }
 
     createPaymentIntent()
-  }, [checkoutState, reservation])
+  }, [checkoutState, reservation, user, event, show, zones, queueData])
 
   // Countdown timer
   useEffect(() => {
