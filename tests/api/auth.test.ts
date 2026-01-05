@@ -3,8 +3,8 @@ import { ApiClient, randomEmail } from './client'
 describe('Auth Flow', () => {
   const api = new ApiClient()
   const testEmail = randomEmail()
-  const testPassword = 'Test123!'
-  const testName = 'Test User'
+  const testPassword = process.env.TEST_PASSWORD || 'Test123!'
+  const testName = process.env.TEST_NAME || 'Test User'
   let accessToken: string
 
   describe('POST /auth/register', () => {

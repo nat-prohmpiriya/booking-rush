@@ -130,9 +130,9 @@ services:
       # PostgreSQL for analytics (read from booking DB)
       - DATABASE_HOST=postgres
       - DATABASE_PORT=5432
-      - DATABASE_USER=postgres
-      - DATABASE_PASSWORD=postgres
-      - DATABASE_DBNAME=booking_db
+      - DATABASE_USER=${DATABASE_USER:-postgres}
+      - DATABASE_PASSWORD=${DATABASE_PASSWORD:-}
+      - DATABASE_DBNAME=${DATABASE_DBNAME:-booking_db}
     env_file:
       - .env.local
     depends_on:
