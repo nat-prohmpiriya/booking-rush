@@ -19,7 +19,7 @@ spec:
         - name: ghcr-secret
       containers:
         - name: seat-release-worker
-          image: ghcr.io/nat-prohmpiriya/booking-rush/seat-release-worker:dffada3
+          image: ghcr.io/nat-prohmpiriya/booking-rush/seat-release-worker:7142c3a
           imagePullPolicy: Always
           env:
             - name: SERVICE_NAME
