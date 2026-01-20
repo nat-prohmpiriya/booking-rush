@@ -498,6 +498,7 @@ func (h *BookingHandler) handleError(c *gin.Context, err error) {
 			Code:  "QUEUE_PASS_MISMATCH",
 		})
 	default:
+		_ = c.Error(err) // Log the error with gin
 		c.JSON(http.StatusInternalServerError, dto.ErrorResponse{
 			Error: "internal server error",
 			Code:  "INTERNAL_ERROR",
