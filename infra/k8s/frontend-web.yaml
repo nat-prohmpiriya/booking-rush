@@ -26,6 +26,11 @@ spec:
           env:
             - name: NEXT_PUBLIC_API_URL
               value: "https://api-booking-rush.dackbox.com"
+            - name: NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: booking-rush-secrets
+                  key: STRIPE_PUBLISHABLE_KEY
           resources:
             requests:
               cpu: 100m

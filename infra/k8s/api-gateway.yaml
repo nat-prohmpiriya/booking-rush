@@ -26,6 +26,10 @@ spec:
           env:
             - name: SERVER_PORT
               value: "8080"
+            - name: RATE_LIMIT_RPS
+              value: "10000"
+            - name: RATE_LIMIT_BURST
+              value: "1000"
           envFrom:
             - configMapRef:
                 name: booking-rush-config
