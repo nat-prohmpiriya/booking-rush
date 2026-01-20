@@ -9,6 +9,7 @@ import (
 	"net/http/httputil"
 	"net/url"
 	"os"
+	"runtime/debug"
 	"strings"
 	"sync"
 	"time"
@@ -252,10 +253,16 @@ func (rp *ReverseProxy) Handler() gin.HandlerFunc {
 		func() {
 			defer func() {
 				if r := recover(); r != nil {
-					// Log panic details for debugging
-					fmt.Printf("PANIC in proxy: %v\n", r)
+					// Log panic details for debugging - MUST print to stdout
+					fmt.Printf("PANIC in proxy for %s: %v\n", c.Request.URL.Path, r)
+					// Also try to get stack trace
+					debug.PrintStack()
 					span.SetStatus(codes.Error, fmt.Sprintf("panic: %v", r))
 					span.RecordError(fmt.Errorf("panic: %v", r))
+					// Write error response if possible
+					if !c.Writer.Written() {
+						c.JSON(500, gin.H{"error": "internal server error", "panic": fmt.Sprintf("%v", r)})
+					}
 				}
 			}()
 			proxy.ServeHTTP(c.Writer, c.Request)
