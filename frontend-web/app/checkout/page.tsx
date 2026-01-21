@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback, Suspense } from "react"
+import { useState, useEffect, useCallback, Suspense, useRef } from "react"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
@@ -76,6 +76,9 @@ function CheckoutContent() {
   // Saved payment methods
   const [savedPaymentMethods, setSavedPaymentMethods] = useState<PaymentMethod[]>([])
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string | null>(null) // null = new card
+
+  // Prevent duplicate payment confirmation calls
+  const isConfirmingRef = useRef(false)
 
   // Timer state
   const [timeLeft, setTimeLeft] = useState(600) // 10 minutes default
@@ -467,10 +470,16 @@ function CheckoutContent() {
 
   // Handle successful Stripe payment
   const handlePaymentSuccess = async (paymentIntentId: string) => {
-    // Guard against duplicate calls
+    // Guard against duplicate calls using ref (synchronous check)
+    if (isConfirmingRef.current) {
+      console.log("Payment confirmation already in progress, skipping duplicate call")
+      return
+    }
     if (checkoutState === "processing" || checkoutState === "success") return
     if (!reservation?.booking_id || !paymentIntent?.payment_id) return
 
+    // Set ref immediately to prevent race conditions
+    isConfirmingRef.current = true
     setCheckoutState("processing")
 
     try {
@@ -501,6 +510,8 @@ function CheckoutContent() {
         setError("Payment completed but confirmation failed. Please contact support.")
       }
       setCheckoutState("error")
+      // Reset ref on error to allow retry
+      isConfirmingRef.current = false
     }
   }
 
